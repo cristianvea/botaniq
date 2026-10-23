@@ -6,6 +6,7 @@ import { identifyPlant, plantnetEnabled } from '../lib/plantnet.js';
 import { PROFILES, SUBSTRATES, profileForTaxon, suggestedPlacement } from '../lib/profiles.js';
 import { NavBar, Section, Segmented, Switch, Icon, Spinner, Sheet, TextField, SelectField } from '../components/ui.jsx';
 import ZoneEditor from '../components/ZoneEditor.jsx';
+import TypePicker from '../components/TypePicker.jsx';
 
 const EMPTY = {
   name: '', species: '', genus: '', family: '', common_name: '',
@@ -33,6 +34,7 @@ export default function EditPlantPage(ctx) {
   const [touched, setTouched] = useState({ name: !!existing, light: !!existing, zone: !!existing, profile: false });
   const [identifying, setIdentifying] = useState(false);
   const [askMismatch, setAskMismatch] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);
   const [mismatchOk, setMismatchOk] = useState(false);
   const [photoBlob, setPhotoBlob] = useState(null);
   const [preview, setPreview] = useState(existing ? photos[existing.photo_path] : null);
@@ -231,10 +233,14 @@ export default function EditPlantPage(ctx) {
         <div className="confirm-id">
           <input className="confirm-name" value={form.name} placeholder="Nombre de la planta"
             onChange={(e) => { setTouched((t) => ({ ...t, name: true })); set({ name: e.target.value }); }} />
-          {form.species ? <div className="t-sub c2"><i>{form.species}</i></div> : <div className="t-sub c3">Especie sin identificar</div>}
+          {form.species
+            ? <div className="t-sub c2"><i>{form.species}</i>{form.common_name && form.common_name.toLowerCase() !== form.name.trim().toLowerCase() ? ` · ${cap(form.common_name)}` : ''}</div>
+            : <div className="t-sub c3">Especie sin identificar</div>}
           <div className="row wrap" style={{ gap: 6, marginTop: 6 }}>
             {top && <span className={`pill ${top.score >= 0.5 ? 'pill-ok' : 'pill-soon'}`}><Icon name="sparkles" size={12} /> {Math.round(top.score * 100)} %</span>}
-            <span className="pill" style={{ background: 'var(--fill)', color: 'var(--label-2)' }}>{short(prof.label)}</span>
+            <button type="button" className="pill type-btn" onClick={() => setTypeOpen(true)} aria-label="Cambiar tipo de planta">
+              {prof.emoji} {short(prof.label)} <Icon name="chevronRight" size={12} stroke={2.6} className="chev" />
+            </button>
             {candidates.length > 1 && <button className="btn plain small" style={{ padding: 0, minHeight: 0, whiteSpace: 'nowrap' }} onClick={() => setShowAlts(true)}>¿No es esta?</button>}
           </div>
         </div>
@@ -342,14 +348,21 @@ export default function EditPlantPage(ctx) {
       {/* Más opciones */}
       <Section>
         <button type="button" className="cell" onClick={() => setMore(!more)} aria-expanded={more}>
-          <div className="cell-main"><div className="cell-title">Más opciones</div><div className="cell-sub t-foot">Tipo de planta, sustrato, fecha exacta y notas</div></div>
+          <div className="cell-main"><div className="cell-title">Más opciones</div><div className="cell-sub t-foot">Nombres, tipo, sustrato, fecha exacta y notas</div></div>
           <Icon name="chevronRight" size={16} stroke={2.6} className="chev" style={{ transform: more ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }} />
         </button>
         {more && (
           <>
-            <SelectField label="Tipo de planta" value={form.profile} onChange={(v) => { setTouched((t) => ({ ...t, profile: true })); setMismatchOk(false); set({ profile: v }); }}
-              options={Object.entries(PROFILES).map(([k, p]) => [k, short(p.label)])} />
-            <TextField label="Especie" value={form.species || ''} placeholder="Nombre científico (opcional)" autoCorrect="off"
+            <div className="tf">
+              <span className="tf-label">Tipo de planta</span>
+              <button type="button" className="tf-input" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => setTypeOpen(true)}>
+                <span>{prof.emoji}</span><span style={{ flex: 1, textAlign: 'left' }}>{short(prof.label)}</span>
+                <Icon name="chevronRight" size={14} stroke={2.6} className="chev" />
+              </button>
+            </div>
+            <TextField label="Nombre común" value={form.common_name || ''} placeholder="Ej.: brecina, potos, costilla de Adán"
+              onChange={(e) => set({ common_name: e.target.value })} />
+            <TextField label="Nombre botánico (latín)" value={form.species || ''} placeholder="Ej.: Calluna vulgaris" autoCorrect="off" autoCapitalize="off"
               style={{ fontStyle: form.species ? 'italic' : 'normal' }} onChange={(e) => set({ species: e.target.value })} />
             <SelectField label="Sustrato" value={form.substrate} onChange={(v) => set({ substrate: v })}
               options={Object.entries(SUBSTRATES).map(([k, s]) => [k, k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]])} />
@@ -367,6 +380,11 @@ export default function EditPlantPage(ctx) {
         <button className="btn block" disabled={saving} onClick={() => save()}>{saving ? <Spinner /> : existing ? 'Guardar cambios' : 'Guardar planta'}</button>
       </div>
 
+      {typeOpen && (
+        <TypePicker value={form.profile} suggested={idProfile} suggestedScore={top?.score}
+          onClose={() => setTypeOpen(false)}
+          onPick={(k) => { setTypeOpen(false); setTouched((t) => ({ ...t, profile: true })); setMismatchOk(false); set({ profile: k }); }} />
+      )}
       {askMismatch && top && (
         <Sheet onClose={() => setAskMismatch(false)}>
           <div className="content" style={{ padding: '8px 16px 16px' }}>

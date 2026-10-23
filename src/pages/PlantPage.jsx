@@ -99,7 +99,7 @@ export default function PlantPage(ctx) {
           <div className="hero-shade" />
           <div className="hero-title">
             <h1>{plant.name}</h1>
-            <p>{[plant.common_name, plant.species].filter(Boolean).join(' · ') || prof.label}</p>
+            <p>{[plant.common_name && plant.common_name.toLowerCase() !== plant.name.toLowerCase() ? plant.common_name.charAt(0).toUpperCase() + plant.common_name.slice(1) : null, plant.species].filter(Boolean).join(' · ') || prof.label.split(' (')[0]}</p>
           </div>
         </div>
       ) : (
@@ -108,7 +108,7 @@ export default function PlantPage(ctx) {
             <Avatar size={72} />
             <div>
               <h1 className="t-large">{plant.name}</h1>
-              <p className="t-sub c2">{[plant.common_name, plant.species].filter(Boolean).join(' · ') || prof.label}</p>
+              <p className="t-sub c2">{[plant.common_name && plant.common_name.toLowerCase() !== plant.name.toLowerCase() ? plant.common_name.charAt(0).toUpperCase() + plant.common_name.slice(1) : null, plant.species].filter(Boolean).join(' · ') || prof.label.split(' (')[0]}</p>
             </div>
           </div>
           <div style={{ height: 18 }} />

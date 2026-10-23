@@ -529,3 +529,6 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 
 .confirm-name { background: var(--field); border-radius: 12px; padding: 6px 12px; border: 1.5px solid transparent; font-size: 22px; }
 .confirm-name:focus { border-color: var(--tint); border-bottom-color: var(--tint); background: var(--bg-elevated); }
+.type-emoji { width: 34px; height: 34px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; font-size: 19px; flex-shrink: 0; }
+.type-btn { display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; background: var(--field); color: var(--label); }
+.type-btn .chev { transform: rotate(90deg); }
