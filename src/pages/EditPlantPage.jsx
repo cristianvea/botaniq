@@ -260,7 +260,7 @@ export default function EditPlantPage(ctx) {
       {existing && !identifying && !idError && !top && plantnetEnabled && (preview || photoBlob) && (
         <Section>
           <button type="button" className="cell" onClick={retryIdentify}>
-            <span className="cell-icon" style={{ background: '#34c759' }}><Icon name="sparkles" size={18} stroke={2.2} /></span>
+            <span className="cell-icon" style={{ background: 'var(--tint)' }}><Icon name="sparkles" size={18} stroke={2.2} /></span>
             <div className="cell-main"><div className="cell-title c-tint">{form.species ? 'Volver a identificar con la foto' : 'Identificar con la foto'}</div></div>
           </button>
         </Section>

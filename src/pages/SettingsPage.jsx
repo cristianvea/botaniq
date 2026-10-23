@@ -47,7 +47,7 @@ export default function SettingsPage(ctx) {
 
       <Section>
         <div className="cell" style={{ paddingTop: 14, paddingBottom: 14 }}>
-          <div className="avatar avatar-empty" style={{ width: 60, height: 60, fontSize: 26, fontWeight: 600, background: 'linear-gradient(160deg,#8fe39f,#1a8f4c)', color: '#fff' }}>
+          <div className="avatar avatar-empty" style={{ width: 60, height: 60, fontSize: 26, fontWeight: 900, background: 'linear-gradient(160deg,#55c2b2,#238a7d)', color: '#fff' }}>
             {me.charAt(0).toUpperCase()}
           </div>
           <div className="cell-main">

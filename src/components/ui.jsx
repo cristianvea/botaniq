@@ -148,7 +148,7 @@ export function Ring({ value, size = 92, stroke = 10, color, children }) {
 export function drynessColor(v) {
   if (v >= 1) return 'var(--water)';
   if (v >= 0.75) return 'var(--orange)';
-  return '#34c759';
+  return 'var(--tint)';
 }
 
 export function Meter({ value }) {

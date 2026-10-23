@@ -263,7 +263,7 @@ function Message({ m, plants, onAdd, onDismiss }) {
       {r && (
         <div className="reminder-offer">
           <div className="reminder-head">
-            <span className="cell-icon" style={{ background: '#34c759' }}><Icon name="flask" size={17} stroke={2.2} /></span>
+            <span className="cell-icon" style={{ background: 'var(--tint)' }}><Icon name="flask" size={17} stroke={2.2} /></span>
             <div>
               <div className="t-headline">{r.title}</div>
               <div className="t-foot c2">{cadenceText(r)} · {r.plant_ids.map((id) => plants.find((p) => p.id === id)?.name).filter(Boolean).join(', ')}</div>

@@ -21,14 +21,14 @@ const fmtTime = (iso) => new Date(iso).toLocaleString('es-ES', { day: 'numeric',
 const TIP_ICON = {
   '🚰': ['drop', '#0a7aff'], '🌡️': ['thermo', '#ff9500'], '❄️': ['thermo', '#5ac8fa'], '🌧️': ['cloudRain', '#5e6ad2'],
   '🪣': ['cloudRain', '#5e6ad2'], '💦': ['mist', '#30b0c7'], '🔥': ['thermo', '#ff3b30'], '😴': ['moon', '#5856d6'],
-  '🏺': ['pot', '#a2845e'], '⚠️': ['humidity', '#ff3b30'], '🧽': ['drop', '#34c759'],
+  '🏺': ['pot', '#a2845e'], '⚠️': ['humidity', '#ff3b30'], '🧽': ['drop', 'var(--tint)'],
 };
 
 const EVENT = {
   water: { icon: 'dropFill', color: '#0a7aff', label: () => 'Regada' },
   mist: { icon: 'mist', color: '#30b0c7', label: () => 'Pulverizada' },
   check_wet: { icon: 'hand', color: '#8e8e93', label: () => 'Aún húmeda' },
-  checkin: { icon: 'camera', color: '#1a8f4c', label: (e) => `Revisión${e.soil ? ` · ${SOIL[e.soil]?.label.toLowerCase()}` : ''}` },
+  checkin: { icon: 'camera', color: 'var(--tint)', label: (e) => `Revisión${e.soil ? ` · ${SOIL[e.soil]?.label.toLowerCase()}` : ''}` },
 };
 
 export default function PlantPage(ctx) {
@@ -61,7 +61,7 @@ export default function PlantPage(ctx) {
   const myReminders = reminders.filter((r) => r.plant_id === plant.id).map((r) => ({ r, st: reminderStatus(r, events) }));
   const withThisWatering = myReminders.filter(({ r, st }) => r.mode === 'with_watering' && st.due);
   const season = seasonalCare(plant, new Date(), household.lat);
-  const SEASON_ICON = { spring: ['sprout', '#34c759'], summer: ['sun', '#ff9500'], autumn: ['leaf', '#c66a2c'], winter: ['thermo', '#5ac8fa'] }[season.key];
+  const SEASON_ICON = { spring: ['sprout', 'var(--tint)'], summer: ['sun', '#ff9500'], autumn: ['leaf', '#c66a2c'], winter: ['thermo', '#5ac8fa'] }[season.key];
   const history = showAll ? myEvents : myEvents.slice(0, 5);
   const sub = substrateFor(plant);
   const adjustPct = Math.round(((plant.adjust || 1) - 1) * 100);
@@ -227,7 +227,7 @@ export default function PlantPage(ctx) {
       <Section header="Recordatorios" inset="icon"
         footer={myReminders.length ? 'Los que van con el riego se dan por hechos al pulsar «Regar», y aparecen en el aviso de ese día.' : 'Pregunta a Florencio, tu botánico de confianza, cómo usar tu abono o qué rutina le conviene, y te lo recordamos con el riego.'}>
         {myReminders.map(({ r, st: rs }) => (
-          <Cell key={r.id} icon="flask" iconBg={rs.off ? '#8e8e93' : '#34c759'} title={r.title}
+          <Cell key={r.id} icon="flask" iconBg={rs.off ? '#8e8e93' : 'var(--tint)'} title={r.title}
             sub={[cadenceText(r), r.note].filter(Boolean).join(' · ')}
             value={<span className={rs.due && !rs.off ? 'c-tint' : ''}>{reminderWhen(rs)}</span>} chevron
             onClick={() => setOpenReminder(r)} />

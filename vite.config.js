@@ -21,7 +21,7 @@ export default defineConfig({
         short_name: 'BotanIQ',
         description: 'Cuidado botánico inteligente para tu hogar',
         lang: 'es',
-        theme_color: '#3aa856',
+        theme_color: '#2a9d8f',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: base,
