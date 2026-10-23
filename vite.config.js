@@ -19,7 +19,7 @@ export default defineConfig({
       manifest: {
         name: 'BotanIQ',
         short_name: 'BotanIQ',
-        description: 'Cuida tus plantas: riego inteligente según la planta y el tiempo',
+        description: 'Cuidado botánico inteligente para tu hogar',
         lang: 'es',
         theme_color: '#f2f2f7',
         background_color: '#f2f2f7',

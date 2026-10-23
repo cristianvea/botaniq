@@ -46,7 +46,7 @@ export default function AuthPage() {
       <div className="auth-head">
         <img src={appIcon} alt="" className="app-icon" />
         <h1 className="t-large">BotanIQ</h1>
-        <p className="t-sub c2" style={{ maxWidth: 280 }}>Cada planta, regada en su momento. Según su especie, su sitio y el tiempo que hace.</p>
+        <p className="t-sub c2" style={{ maxWidth: 280 }}>Cuidado botánico inteligente para tu hogar</p>
       </div>
 
       <form onSubmit={submit} className="stack">
