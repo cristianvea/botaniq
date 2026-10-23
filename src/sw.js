@@ -14,8 +14,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'BotanIQ', {
       body: data.body || 'Tienes plantas que regar',
-      icon: scope + 'icon-192.png',
-      badge: scope + 'icon-192.png',
+      icon: scope + 'icon-192-tulipan.png',
+      badge: scope + 'icon-192-tulipan.png',
       tag: data.tag || 'riego',
       renotify: true,
       data: { url: data.url || scope },

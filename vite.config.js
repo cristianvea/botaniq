@@ -15,7 +15,7 @@ export default defineConfig({
       filename: 'sw.js',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['apple-touch-icon.png', 'favicon.png'],
+      includeAssets: ['apple-touch-icon-tulipan.png', 'favicon-tulipan.png'],
       manifest: {
         name: 'BotanIQ',
         short_name: 'BotanIQ',
@@ -27,9 +27,9 @@ export default defineConfig({
         start_url: base,
         scope: base,
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon-192-tulipan.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512-tulipan.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-512-tulipan.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       injectManifest: { globPatterns: ['**/*.{js,css,html,png,svg}'] },

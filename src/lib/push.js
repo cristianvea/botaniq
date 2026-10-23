@@ -55,7 +55,7 @@ export async function testNotification() {
   const reg = await navigator.serviceWorker.ready;
   await reg.showNotification('💧 Así te avisaremos', {
     body: 'Salón: Monstera, Potos. Revisa la tierra (y haz una foto) antes de regar.',
-    icon: reg.scope + 'icon-192.png',
+    icon: reg.scope + 'icon-192-tulipan.png',
     tag: 'prueba',
   });
 }
