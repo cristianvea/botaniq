@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchPlaces, reversePlace } from '../lib/weather.js';
-import { Section, Cell, Spinner } from './ui.jsx';
+import { Section, Cell, Spinner, TextField } from './ui.jsx';
 
 // Busca mientras escribes (barrio, calle o ciudad) o usa la ubicación del móvil
 export default function LocationPicker({ onPick }) {
@@ -70,11 +70,8 @@ export default function LocationPicker({ onPick }) {
         </Cell>
       </Section>
       <Section header="O busca tu barrio, calle o ciudad" footer={err || 'Basta con aproximarte: el tiempo es el mismo en un radio de 1–2 km.'}>
-        <label className="cell">
-          <input className="left" type="search" enterKeyHint="search" autoCorrect="off" spellCheck={false}
-            placeholder="Ej.: Chamberí, Madrid · Calle Mayor 5, Sevilla" value={q} onChange={(e) => setQ(e.target.value)} />
-          {searching && <Spinner />}
-        </label>
+        <TextField label={searching ? 'Buscando…' : 'Barrio, calle o ciudad'} type="search" enterKeyHint="search" autoCorrect="off" spellCheck={false}
+          placeholder="Ej.: Antón Martín, Madrid" value={q} onChange={(e) => setQ(e.target.value)} />
         {results.map((r) => (
           <Cell key={`${r.lat},${r.lon},${r.name}`} title={r.name} sub={r.detail} chevron onClick={busy ? undefined : () => pick(r)} />
         ))}

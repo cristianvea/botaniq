@@ -7,7 +7,7 @@ import { PROFILES, LIGHTS, SUBSTRATES, POTS, substrateFor } from '../lib/profile
 import { SOIL, learnFromSoil, indoorClimate } from '../lib/watering.js';
 import { seasonalCare, fmtHours } from '../lib/season.js';
 import { waterPlants } from '../lib/actions.js';
-import { NavBar, Section, Cell, Icon, Meter, Switch, Spinner } from '../components/ui.jsx';
+import { NavBar, Section, Cell, Icon, Meter, Switch, Spinner, TextField } from '../components/ui.jsx';
 import Diagnosis from '../components/Diagnosis.jsx';
 
 const LIGHT_ORDER = ['low', 'indirect', 'direct'];
@@ -235,10 +235,8 @@ export default function CheckinPage(ctx) {
         ))}
       </Section>
 
-      <Section header="Nota">
-        <div className="cell">
-          <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Hojas amarillas abajo, ha sacado una hoja nueva…" />
-        </div>
+      <Section>
+        <TextField label="Nota (opcional)" multiline rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Hojas amarillas abajo, ha sacado una hoja nueva…" />
       </Section>
 
       {blob && (

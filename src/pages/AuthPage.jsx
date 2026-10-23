@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
-import { Spinner } from '../components/ui.jsx';
+import { Spinner, TextField } from '../components/ui.jsx';
 import appIcon from '../../public/icon-192.png?inline';
 
 const TITLES = { login: 'Inicia sesión', signup: 'Crea tu cuenta', reset: 'Recuperar contraseña' };
@@ -52,24 +52,21 @@ export default function AuthPage() {
       <form onSubmit={submit} className="stack">
         <div className="section-header" style={{ padding: '0 16px', marginBottom: -4 }}>{TITLES[mode]}</div>
         <div className="group">
-          <div><input className="field" type="email" autoComplete="username" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Correo electrónico" required value={rawEmail} onChange={(e) => setEmail(e.target.value)} /></div>
+          <TextField label="Correo electrónico" type="email" autoComplete="username" inputMode="email" autoCapitalize="none"
+            autoCorrect="off" spellCheck={false} placeholder="tu@correo.com" required value={rawEmail} onChange={(e) => setEmail(e.target.value)} />
           {mode !== 'reset' && (
-            <div>
-              <input
-                className="field" type={showPass ? 'text' : 'password'} minLength={6} required placeholder="Contraseña"
-                autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                autoComplete="current-password"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingRight: 92 }}
-              />
-              <button type="button" className="btn plain small" onClick={() => setShowPass(!showPass)}
-                style={{ position: 'absolute', right: 6, top: 8 }} aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-                {showPass ? 'Ocultar' : 'Mostrar'}
-              </button>
+            <div className="tf">
+              <label className="tf-label" htmlFor="password">Contraseña</label>
+              <div className="tf-pass">
+                <input id="password" className="tf-input" type={showPass ? 'text' : 'password'} minLength={6} required
+                  autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                  placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : 'Tu contraseña'} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <button type="button" className="btn plain small tf-toggle" onClick={() => setShowPass(!showPass)}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPass ? 'Ocultar' : 'Mostrar'}</button>
+              </div>
             </div>
           )}
         </div>
-        {mode === 'signup' && <p className="section-footer" style={{ marginTop: -6 }}>Mínimo 6 caracteres.</p>}
         <button className="btn block" disabled={busy}>
           {busy ? <Spinner /> : mode === 'login' ? 'Continuar' : mode === 'signup' ? 'Crear cuenta' : 'Enviar enlace'}
         </button>

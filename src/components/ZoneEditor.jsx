@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as db from '../lib/data.js';
-import { Segmented, Switch } from './ui.jsx';
+import { Segmented, Switch, TextField } from './ui.jsx';
 
 export const zoneKind = (z) =>
   z.location === 'indoor' ? 'Interior' : z.gets_rain ? 'Exterior' : 'Exterior cubierto';
@@ -36,9 +36,7 @@ export default function ZoneEditor({ householdId, zone, existingNames = [], onSa
 
   return (
     <div className="group" style={{ marginTop: 8 }}>
-      <label className="cell">
-        <input className="left" autoFocus placeholder="Nombre de la zona" value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
+      <TextField label="Nombre de la zona" placeholder="Salón, terraza, cocina…" value={name} onChange={(e) => setName(e.target.value)} />
       {!zone && !name && suggestions.length > 0 && (
         <div className="cell">
           <div className="chips wrap">

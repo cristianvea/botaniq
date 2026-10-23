@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
-import { NavBar, Section, Segmented, Icon, Spinner } from '../components/ui.jsx';
+import { NavBar, Section, Segmented, Icon, Spinner, TextField } from '../components/ui.jsx';
 
 export default function OnboardingPage({ user, onDone, canCancel }) {
   const [mode, setMode] = useState('create');
@@ -39,14 +39,12 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
         </div>
         <Section footer={err ? <span className="c-red">{err}</span> : mode === 'join' ? 'Te lo da quien creó la casa, en Ajustes → Invitar.' : null}>
           {mode === 'create' ? (
-            <label className="cell"><span className="label">Casa</span><input className="right" required value={name} onChange={(e) => setName(e.target.value)} /></label>
+            <TextField label="Nombre de la casa" required value={name} placeholder="Mi casa" onChange={(e) => setName(e.target.value)} />
           ) : (
-            <label className="cell"><span className="label">Código</span>
-              <input className="right" required value={code} maxLength={6} placeholder="A1B2C3" autoCapitalize="characters"
-                style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2 }} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-            </label>
+            <TextField label="Código de invitación" required value={code} maxLength={6} placeholder="A1B2C3" autoCapitalize="characters" autoCorrect="off"
+              style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2 }} onChange={(e) => setCode(e.target.value.toUpperCase())} />
           )}
-          <label className="cell"><span className="label">Tu nombre</span><input className="right" required value={me} onChange={(e) => setMe(e.target.value)} /></label>
+          <TextField label="Tu nombre" required value={me} placeholder="Cómo te verán los demás" onChange={(e) => setMe(e.target.value)} />
         </Section>
         <div className="content">
           <button className="btn block" disabled={busy}>{busy ? <Spinner /> : mode === 'create' ? 'Crear casa' : 'Unirme'}</button>

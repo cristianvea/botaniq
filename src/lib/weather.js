@@ -67,11 +67,34 @@ function shortName(a = {}, fallback = '') {
   return unique.length ? unique.join(', ') : fallback.split(',').slice(0, 3).join(',');
 }
 
+async function searchPhoton(query) {
+  const res = await fetch(`https://photon.komoot.io/api/?limit=6&q=${encodeURIComponent(query)}`);
+  if (!res.ok) return [];
+  const j = await res.json();
+  return (j.features || []).map((f) => {
+    const p = f.properties || {};
+    const name = [p.name, p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street, p.district || p.locality, p.city]
+      .filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3).join(', ');
+    return { name: name || p.city || '', detail: [p.state, p.country].filter(Boolean).join(', '), lat: +f.geometry.coordinates[1].toFixed(4), lon: +f.geometry.coordinates[0].toFixed(4) };
+  });
+}
+
 export async function searchPlaces(query) {
-  const url = `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&q=${encodeURIComponent(query)}`;
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error('No se pudo buscar el lugar. Prueba de nuevo en unos segundos.');
-  const list = await res.json();
+  let list = [];
+  try {
+    const url = `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&countrycodes=es,pt,fr,ad,it&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (res.ok) list = await res.json();
+  } catch { /* probamos con Photon */ }
+  if (!list.length) {
+    const alt = await searchPhoton(query).catch(() => []);
+    if (alt.length) return alt;
+    // Último intento sin limitar países
+    try {
+      const res = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&q=${encodeURIComponent(query)}`);
+      if (res.ok) list = await res.json();
+    } catch { /* sin conexión */ }
+  }
   return list.map((r) => ({
     name: shortName(r.address, r.display_name),
     detail: [r.address?.state, r.address?.country].filter(Boolean).join(', '),

@@ -4,7 +4,7 @@ import { go } from '../lib/nav.js';
 import { resizeImage } from '../lib/image.js';
 import { identifyPlant, plantnetEnabled } from '../lib/plantnet.js';
 import { PROFILES, SUBSTRATES, profileForTaxon, suggestedPlacement } from '../lib/profiles.js';
-import { NavBar, Section, Segmented, Switch, Icon, Spinner, Sheet } from '../components/ui.jsx';
+import { NavBar, Section, Segmented, Switch, Icon, Spinner, Sheet, TextField, SelectField } from '../components/ui.jsx';
 import ZoneEditor from '../components/ZoneEditor.jsx';
 
 const EMPTY = {
@@ -280,33 +280,18 @@ export default function EditPlantPage(ctx) {
         </button>
         {more && (
           <>
-            <label className="cell">
-              <span className="label">Tipo</span>
-              <select value={form.profile} onChange={(e) => set({ profile: e.target.value })} >
-                {Object.entries(PROFILES).map(([k, p]) => <option key={k} value={k}>{short(p.label)}</option>)}
-              </select>
-            </label>
-            <label className="cell">
-              <span className="label">Especie</span>
-              <input className="right" style={{ fontStyle: 'italic' }} value={form.species || ''} placeholder="Opcional"
-                onChange={(e) => set({ species: e.target.value })} />
-            </label>
-            <label className="cell">
-              <span className="label">Sustrato</span>
-              <select value={form.substrate} onChange={(e) => set({ substrate: e.target.value })} >
-                {Object.entries(SUBSTRATES).map(([k, s]) => <option key={k} value={k}>{k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]}</option>)}
-              </select>
-            </label>
+            <SelectField label="Tipo de planta" value={form.profile} onChange={(v) => set({ profile: v })}
+              options={Object.entries(PROFILES).map(([k, p]) => [k, short(p.label)])} />
+            <TextField label="Especie" value={form.species || ''} placeholder="Nombre científico (opcional)" autoCorrect="off"
+              style={{ fontStyle: form.species ? 'italic' : 'normal' }} onChange={(e) => set({ species: e.target.value })} />
+            <SelectField label="Sustrato" value={form.substrate} onChange={(v) => set({ substrate: v })}
+              options={Object.entries(SUBSTRATES).map(([k, s]) => [k, k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]])} />
             {!existing && (
-              <label className="cell">
-                <span className="label">Fecha del último riego</span>
-                <input type="date" className="right" max={todayStr} value={lastDate}
-                  onChange={(e) => { setLastDate(e.target.value); setLastWatered(e.target.value ? 'date' : 'unknown'); }} />
-              </label>
+              <TextField label="Fecha exacta del último riego" type="date" max={todayStr} value={lastDate}
+                onChange={(e) => { setLastDate(e.target.value); setLastWatered(e.target.value ? 'date' : 'unknown'); }} />
             )}
-            <label className="cell">
-              <textarea rows={2} value={form.notes || ''} onChange={(e) => set({ notes: e.target.value })} placeholder="Notas: abono, de dónde viene…" />
-            </label>
+            <TextField label="Notas" multiline rows={3} value={form.notes || ''} placeholder="Abono, de dónde viene, cuidados especiales…"
+              onChange={(e) => set({ notes: e.target.value })} />
           </>
         )}
       </Section>

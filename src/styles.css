@@ -14,6 +14,7 @@
   --fill: rgba(120, 120, 128, 0.12);
   --fill-2: rgba(120, 120, 128, 0.2);
   --bar: rgba(249, 249, 249, 0.78);
+  --field: #ececf1;
 
   --tint: #1a8f4c;        /* verde de marca */
   --tint-soft: rgba(52, 199, 89, 0.14);
@@ -50,6 +51,7 @@
     --fill: rgba(120, 120, 128, 0.24);
     --fill-2: rgba(120, 120, 128, 0.32);
     --bar: rgba(22, 22, 24, 0.78);
+  --field: #2c2c2e;
     --tint: #30d158;
     --tint-soft: rgba(48, 209, 88, 0.16);
     --water: #0a84ff;
@@ -78,6 +80,7 @@
     --fill: rgba(120, 120, 128, 0.24);
     --fill-2: rgba(120, 120, 128, 0.32);
     --bar: rgba(22, 22, 24, 0.78);
+  --field: #2c2c2e;
     --tint: #30d158;
     --tint-soft: rgba(48, 209, 88, 0.16);
     --water: #0a84ff;
@@ -495,8 +498,34 @@ button.cell:active, a.cell:active { background: var(--fill-2); }
 .pot-hint { line-height: 1.35; margin-top: -2px; }
 
 /* Toques más fiables en móvil: filas enteras pulsables y sin retardo de doble toque */
-button, a, input, select, textarea, label, .chip, .cell { touch-action: manipulation; }
+button, a, .chip, .cell, .tab, .action { touch-action: manipulation; }
 label.cell { cursor: text; }
 label.cell .label { flex-shrink: 0; color: var(--label); }
 .cell input.right, .cell select { flex: 1; max-width: none; min-width: 0; }
 .cell input, .cell select, .cell textarea, .field { font-size: 17px; }
+
+/* Campos rellenables: etiqueta fija arriba (texto) y caja editable con fondo propio */
+.tf { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; background: var(--card); }
+.tf + .tf { padding-top: 4px; }
+.tf-label { font-size: 13px; font-weight: 600; color: var(--label-2); letter-spacing: 0.01em; }
+.tf-input {
+  width: 100%; min-height: 46px; padding: 11px 14px; border-radius: 12px;
+  border: 1.5px solid transparent; background: var(--field); color: var(--label);
+  font: inherit; font-size: 17px; line-height: 1.3; text-align: left;
+  -webkit-appearance: none; appearance: none; transition: border-color 0.15s, background 0.15s;
+  -webkit-user-select: text; user-select: text;
+}
+textarea.tf-input { min-height: 84px; resize: vertical; }
+.tf-input::placeholder { color: var(--label-3); }
+.tf-input:focus { outline: none; border-color: var(--tint); background: var(--bg-elevated); }
+.tf-hint { font-size: 13px; color: var(--label-2); line-height: 1.35; }
+.tf-select { position: relative; }
+.tf-select select { padding-right: 38px; cursor: pointer; }
+.tf-chev { position: absolute; right: 14px; top: 50%; transform: translateY(-50%) rotate(90deg); color: var(--label-3); pointer-events: none; }
+.group > .tf + .tf::before { display: none; }
+.tf-pass { position: relative; }
+.tf-pass .tf-input { padding-right: 96px; }
+.tf-pass .tf-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+
+.confirm-name { background: var(--field); border-radius: 12px; padding: 6px 12px; border: 1.5px solid transparent; font-size: 22px; }
+.confirm-name:focus { border-color: var(--tint); border-bottom-color: var(--tint); background: var(--bg-elevated); }

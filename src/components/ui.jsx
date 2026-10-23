@@ -215,3 +215,36 @@ export function Spinner({ size = 18 }) {
 }
 
 export const fmtRelDays = (n) => (n == null ? '—' : n === 0 ? 'Hoy' : n === 1 ? 'Ayer' : `Hace ${n} días`);
+
+let fieldSeq = 0;
+const useFieldId = (id) => { const [v] = useState(() => id || `f${++fieldSeq}`); return v; };
+
+/** Campo de texto con etiqueta fija arriba y caja rellenable bien diferenciada */
+export function TextField({ label, hint, id, multiline, style, ...props }) {
+  const fid = useFieldId(id);
+  const Tag = multiline ? 'textarea' : 'input';
+  return (
+    <div className="tf">
+      {label && <label className="tf-label" htmlFor={fid}>{label}</label>}
+      <Tag id={fid} className="tf-input" style={style} {...props} />
+      {hint && <div className="tf-hint">{hint}</div>}
+    </div>
+  );
+}
+
+/** Desplegable con el mismo aspecto que TextField */
+export function SelectField({ label, hint, id, options, value, onChange }) {
+  const fid = useFieldId(id);
+  return (
+    <div className="tf">
+      {label && <label className="tf-label" htmlFor={fid}>{label}</label>}
+      <div className="tf-select">
+        <select id={fid} className="tf-input" value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <Icon name="chevronRight" size={14} stroke={2.6} className="tf-chev" />
+      </div>
+      {hint && <div className="tf-hint">{hint}</div>}
+    </div>
+  );
+}
