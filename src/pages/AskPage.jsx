@@ -3,6 +3,7 @@ import * as db from '../lib/data.js';
 import { askAssistant, buildContext, TIER_LABEL } from '../lib/assistant.js';
 import { cadenceText } from '../lib/reminders.js';
 import { resizeImage } from '../lib/image.js';
+import Florencio from '../components/Florencio.jsx';
 import { NavBar, Icon, Avatar, Spinner } from '../components/ui.jsx';
 
 // photo: abre la cámara y manda la pregunta con la foto
@@ -159,7 +160,7 @@ export default function AskPage(ctx) {
         <div className="center c3" style={{ minHeight: 200 }}><Spinner /></div>
       ) : messages.length === 0 ? (
         <div className="ask-empty">
-          <div className="ask-glyph florencio">F</div>
+          <div className="ask-hero"><Florencio mood="idle" size={128} /></div>
           <h2 className="t-title3">¡Hola! Soy Florencio</h2>
           <p className="t-sub c2">
             Tu botánico de confianza. {focusPlant ? `Ya conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Ya conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
@@ -182,9 +183,9 @@ export default function AskPage(ctx) {
           {busy && (live?.text
             ? <div className="msg-bot"><div className="bubble bot">{live.text.split(/\n{2,}/).map((para, i, all) => <p key={i}>{para}{i === all.length - 1 && <span className="caret" />}</p>)}</div></div>
             : (
-              <div className="msg-bot">
-                <div className="bubble bot typing" aria-label="Florencio está pensando"><span /><span /><span /></div>
-                <div className="msg-model">{live?.tier === 'pro' ? 'Florencio está mirando con lupa…' : live?.tier === 'standard' ? 'Florencio está pensando…' : 'Florencio está escribiendo…'}</div>
+              <div className="msg-bot flo-thinking-row" role="status">
+                <Florencio mood="thinking" size={92} title="Florencio está pensando" />
+                <div className="msg-model">{live?.tier === 'pro' ? 'Mirando con lupa…' : live?.tier === 'standard' ? 'Pensando…' : 'Un momento…'}</div>
               </div>
             ))}
           {!busy && last?.role === 'assistant' && last.meta?.suggestions?.length > 0 && (
@@ -257,7 +258,7 @@ function Message({ m, plants, onAdd, onDismiss }) {
         </div>
       )}
       {meta.model && !meta.error && (
-        <div className="msg-model" title={meta.reason}>Florencio · {TIER_LABEL[meta.tier] || ''} · {String(meta.model).replace(/^models\//, '')}</div>
+        <div className="msg-model msg-avatar" title={meta.reason}><Florencio mood="head" size={20} /> Florencio · {TIER_LABEL[meta.tier] || ''} · {String(meta.model).replace(/^models\//, '')}</div>
       )}
     </div>
   );
