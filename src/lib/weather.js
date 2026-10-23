@@ -58,49 +58,67 @@ export async function fetchWeather(lat, lon, { pastDays = 45, forecastDays = 10 
 // Permite buscar barrios, calles o direcciones, no solo ciudades. Uso gratuito: máx. 1 petición por segundo.
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 
-function shortName(a = {}, fallback = '') {
+function shortName(a = {}, fallback = '', own = '') {
   const street = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(' ');
   const area = a.neighbourhood || a.quarter || a.suburb || a.city_district || a.village || a.hamlet;
   const city = a.city || a.town || a.municipality || a.village || a.county;
-  const parts = [street, area, city].filter(Boolean);
-  const unique = parts.filter((p, i) => parts.indexOf(p) === i);
+  // El nombre propio del sitio (p. ej. "Antón Martín") va primero si no es la propia calle
+  const parts = [own && own !== street ? own : null, street, area, city].filter(Boolean);
+  const unique = parts.filter((p, i) => parts.indexOf(p) === i).slice(0, 3);
   return unique.length ? unique.join(', ') : fallback.split(',').slice(0, 3).join(',');
 }
 
+const TYPE_LABEL = {
+  station: 'Metro / estación', subway_entrance: 'Metro', stop: 'Parada', square: 'Plaza', neighbourhood: 'Barrio',
+  quarter: 'Barrio', suburb: 'Barrio', city_district: 'Distrito', city: 'Ciudad', town: 'Población', village: 'Pueblo',
+  residential: 'Calle', primary: 'Calle', secondary: 'Calle', tertiary: 'Calle', pedestrian: 'Calle peatonal', house: 'Dirección',
+};
+
+// Quita repetidos: mismo nombre, o el mismo sitio (mismo nombre propio) a menos de ~60 m
+function dedupe(list) {
+  const out = [];
+  for (const r of list) {
+    const head = (x) => x.name.split(',')[0];
+    if (out.some((o) => o.name === r.name || (head(o) === head(r) && Math.abs(o.lat - r.lat) < 0.0006 && Math.abs(o.lon - r.lon) < 0.0008))) continue;
+    out.push(r);
+  }
+  return out;
+}
+
 async function searchPhoton(query) {
-  const res = await fetch(`https://photon.komoot.io/api/?limit=6&q=${encodeURIComponent(query)}`);
+  const res = await fetch(`https://photon.komoot.io/api/?limit=10&q=${encodeURIComponent(query)}`);
   if (!res.ok) return [];
   const j = await res.json();
   return (j.features || []).map((f) => {
     const p = f.properties || {};
     const name = [p.name, p.street && p.housenumber ? `${p.street} ${p.housenumber}` : p.street, p.district || p.locality, p.city]
       .filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3).join(', ');
-    return { name: name || p.city || '', detail: [p.state, p.country].filter(Boolean).join(', '), lat: +f.geometry.coordinates[1].toFixed(4), lon: +f.geometry.coordinates[0].toFixed(4) };
-  });
+    return { name: name || p.city || '', detail: [TYPE_LABEL[p.osm_value], p.state].filter(Boolean).join(' · '), lat: +f.geometry.coordinates[1].toFixed(4), lon: +f.geometry.coordinates[0].toFixed(4) };
+  }).filter((r) => r.name);
 }
 
 export async function searchPlaces(query) {
   let list = [];
   try {
-    const url = `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&countrycodes=es,pt,fr,ad,it&q=${encodeURIComponent(query)}`;
+    const url = `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=12&accept-language=es&countrycodes=es,pt,fr,ad,it&q=${encodeURIComponent(query)}`;
     const res = await fetch(url, { headers: { Accept: 'application/json' } });
     if (res.ok) list = await res.json();
   } catch { /* probamos con Photon */ }
   if (!list.length) {
     const alt = await searchPhoton(query).catch(() => []);
-    if (alt.length) return alt;
+    if (alt.length) return dedupe(alt).slice(0, 6);
     // Último intento sin limitar países
     try {
-      const res = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&q=${encodeURIComponent(query)}`);
+      const res = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=12&accept-language=es&q=${encodeURIComponent(query)}`);
       if (res.ok) list = await res.json();
     } catch { /* sin conexión */ }
   }
-  return list.map((r) => ({
-    name: shortName(r.address, r.display_name),
-    detail: [r.address?.state, r.address?.country].filter(Boolean).join(', '),
+  return dedupe(list.map((r) => ({
+    name: shortName(r.address, r.display_name, r.name),
+    detail: [TYPE_LABEL[r.type] || TYPE_LABEL[r.addresstype], r.address?.state].filter(Boolean).join(' · '),
     lat: +(+r.lat).toFixed(4),
     lon: +(+r.lon).toFixed(4),
-  }));
+  }))).slice(0, 6);
 }
 
 export async function reversePlace(lat, lon) {
