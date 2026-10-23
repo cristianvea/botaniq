@@ -11,6 +11,7 @@ import { fetchWeather } from '../src/lib/weather.js';
 import { computeStatus, mistStatus } from '../src/lib/watering.js';
 import { MIST } from '../src/lib/care.js';
 import { reminderStatus } from '../src/lib/reminders.js';
+import { householdSummary, buildNotification } from '../src/lib/notifyText.js';
 
 const {
   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
@@ -106,28 +107,12 @@ async function messageFor(h) {
   console.log(`[${h.name}] ${hp.length} plantas, ${due.length} por regar: ${due.map((d) => d.p.name).join(', ')}; pulverizar: ${toMist.map((p) => p.name).join(', ')}; cuidados: ${[...withWater, ...byDays].map((r) => r.title).join(', ')}`);
   if (!due.length && !toMist.length && !byDays.length) return null;
 
-  // Agrupado por zona: "Salón: Monstera, Potos · Terraza: Romero"
-  const groups = {};
-  for (const { p } of due) (groups[zoneName[p.zone_id] || ''] ||= []).push(p.name);
-  const body = Object.entries(groups)
-    .map(([z, names]) => {
-      const list = names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} y ${names.length - 2} más`;
-      return z ? `${z}: ${list}` : list;
-    })
-    .join(' · ');
-  const parts = [];
-  if (due.length) parts.push(`${body}. Revisa la tierra (y haz una foto) antes de regar.`);
-  if (withWater.length) parts.push(`🌱 Con este riego: ${withWater.map((r) => `${r.title.toLowerCase()} (${name(r.plant_id)})`).join(', ')}`);
-  if (toMist.length) parts.push(`💦 Pulverizar: ${toMist.map((p) => p.name).join(', ')}`);
-  if (byDays.length) parts.push(`🌱 Hoy: ${byDays.map((r) => `${r.title.toLowerCase()} (${name(r.plant_id)})`).join(', ')}`);
-  const multi = households.length > 1 ? ` · ${h.name}` : '';
-  return (messageCache[h.id] = JSON.stringify({
-    title: (due.length
-      ? `💧 Toca regar ${due.length === 1 ? '1 planta' : `${due.length} plantas`}`
-      : toMist.length ? '💦 Toca pulverizar' : '🌱 Cuidados de hoy') + multi,
-    body: parts.join('\n'),
-    tag: `riego-${h.id}`,
-    url: APP_URL || undefined,
+  return (messageCache[h.id] = householdSummary({
+    house: h.name,
+    due: due.map(({ p }) => ({ name: p.name, zone: zoneName[p.zone_id] || '' })),
+    withWater: withWater.map((r) => ({ title: r.title, plant: name(r.plant_id) })),
+    mist: toMist.map((p) => p.name),
+    byDays: byDays.map((r) => ({ title: r.title, plant: name(r.plant_id) })),
   }));
 }
 
@@ -135,20 +120,25 @@ let sent = 0;
 for (const s of ready) {
   const hids = members.filter((m) => m.user_id === s.user_id).map((m) => m.household_id);
   let gone = false;
-  for (const h of households.filter((x) => hids.includes(x.id))) {
-    const payload = await messageFor(h);
-    if (!payload || gone) continue;
-    if (DRY_RUN) { console.log('  → (simulado)', s.endpoint.slice(0, 50), payload); continue; }
-    try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
-      sent++;
-    } catch (e) {
-      if (e.statusCode === 404 || e.statusCode === 410) {
-        await sb.from('push_subscriptions').delete().eq('id', s.id);
-        console.log('  suscripción caducada eliminada');
-        gone = true;
-      } else {
-        console.error('  error push', e.statusCode, e.body || e.message);
+  // Un único aviso con todas las plantas de todas sus casas
+  const summaries = [];
+  for (const h of households.filter((x) => hids.includes(x.id))) summaries.push(await messageFor(h));
+  const note = buildNotification(summaries, { url: APP_URL || undefined });
+  if (note) {
+    const payload = JSON.stringify(note);
+    if (DRY_RUN) console.log('  → (simulado)', s.endpoint.slice(0, 50), payload);
+    else {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
+        sent++;
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) {
+          await sb.from('push_subscriptions').delete().eq('id', s.id);
+          console.log('  suscripción caducada eliminada');
+          gone = true;
+        } else {
+          console.error('  error push', e.statusCode, e.body || e.message);
+        }
       }
     }
   }

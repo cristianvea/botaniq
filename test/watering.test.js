@@ -185,3 +185,19 @@ test('recordatorios con el riego y por días', () => {
   const d = { plant_id: 'p', mode: 'every_days', every: 14, months: [], created_at: '2026-05-01T00:00:00Z', last_done_at: '2026-05-05T10:00:00Z' };
   assert.equal(reminderWhen(reminderStatus(d, [], now)), 'En 9 días');
 });
+
+import { householdSummary, buildNotification } from '../src/lib/notifyText.js';
+
+test('un solo aviso con todas las plantas', () => {
+  const casa = householdSummary({ house: 'Casa', due: [{ name: 'Monstera', zone: 'Salón' }, { name: 'Potos', zone: 'Salón' }, { name: 'Romero', zone: 'Terraza' }], mist: ['Calathea'] });
+  const n = buildNotification([casa]);
+  assert.equal(n.title, '💧 Toca regar 3 plantas y pulverizar');
+  assert.match(n.body, /Salón: Monstera, Potos · Terraza: Romero/);
+  assert.match(n.body, /Pulverizar: Calathea/);
+  const pueblo = householdSummary({ house: 'Pueblo', due: [{ name: 'Geranio', zone: 'Balcón' }] });
+  const two = buildNotification([casa, pueblo, null]);
+  assert.equal(two.title, '💧 Toca regar 4 plantas y pulverizar');
+  assert.match(two.body, /^Casa\n/);
+  assert.match(two.body, /Pueblo\n💧 Balcón: Geranio/);
+  assert.equal(buildNotification([null]), null);
+});
