@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as chat from '../lib/chatStore.js';
-import { threadsOf } from '../lib/chatStore.js';
+import { threadsOf, topicOf } from '../lib/chatStore.js';
 import { go } from '../lib/nav.js';
 import * as db from '../lib/data.js';
 import { buildContext, TIER_LABEL } from '../lib/assistant.js';
@@ -208,7 +208,7 @@ export default function AskPage(ctx) {
             const writing = live?.threadId === t.id;
             return (
               <Cell key={t.id} href={`#/chat/${t.id}`} chevron
-                leading={p ? <Avatar url={photos[p.photo_path]} size={44} /> : <span className="thread-flo"><Florencio mood="head" size={44} /></span>}
+                leading={<span className="thread-emoji" style={{ background: topicOf(t.title).bg }} aria-hidden="true">{topicOf(t.title).emoji}</span>}
                 title={short(t.title)}
                 sub={<span className={writing ? 'c-tint' : ''}>{writing ? 'Florencio está escribiendo…' : `${p ? p.name : 'Todas tus plantas'} · ${fmtWhen(t.updated)}`}</span>} />
             );

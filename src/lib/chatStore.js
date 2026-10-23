@@ -68,3 +68,22 @@ export function threadsOf(messages) {
     return { ...t, title: first?.content || 'Conversación', plantId: first?.plant_id || null, updated: last?.created_at, count: t.messages.length };
   }).sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
 }
+
+// Emoji y color según el tema de la conversación
+const TOPICS = [
+  [/abon|fertiliz|nutrient|npk|humus|compost|guano/, '💪', 'var(--orange-soft)'],
+  [/plaga|bicho|cochinilla|ara[ñn]a|pulg[oó]n|trips|mosca|mosquit|insect/, '🐛', 'var(--red-soft)'],
+  [/hongo|moho|podrid/, '🍄', 'var(--red-soft)'],
+  [/amarill|manch|marchit|se muere|seca|quemad|qu[eé] le pasa|enferm/, '🩺', 'var(--red-soft)'],
+  [/luz|sol\b|sombra|ventana|oscur/, '☀️', 'var(--sun-soft)'],
+  [/riego|regar|riega|agua|\bsed\b|encharc|pulveriz|humedad/, '💧', 'var(--water-soft)'],
+  [/trasplant|maceta|sustrato|tierra/, '🪴', 'var(--tint-soft)'],
+  [/poda|podar|esqueje|reproduc|cortar/, '✂️', 'var(--tint-soft)'],
+  [/flor|florec/, '🌸', 'var(--red-soft)'],
+  [/fr[ií]o|helad|invierno|calor|temperatura/, '🌡️', 'var(--water-soft)'],
+];
+export function topicOf(text = '') {
+  const q = text.toLowerCase();
+  const hit = TOPICS.find(([re]) => re.test(q));
+  return hit ? { emoji: hit[1], bg: hit[2] } : { emoji: '🌱', bg: 'var(--tint-soft)' };
+}

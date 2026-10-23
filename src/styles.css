@@ -905,3 +905,4 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .thread-about { align-self: center; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--label-2); background: var(--fill); padding: 4px 10px 4px 4px; border-radius: 99px; margin-bottom: 4px; }
 .thread-about .avatar { border-radius: 50%; }
 .ask-new-head { margin: 0 22px; }
+.thread-emoji { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; flex-shrink: 0; }
