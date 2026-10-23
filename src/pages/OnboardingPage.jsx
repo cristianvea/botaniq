@@ -39,14 +39,14 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
         </div>
         <Section footer={err ? <span className="c-red">{err}</span> : mode === 'join' ? 'Te lo da quien creó la casa, en Ajustes → Invitar.' : null}>
           {mode === 'create' ? (
-            <div className="cell"><span className="label">Casa</span><input className="right" required value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <label className="cell"><span className="label">Casa</span><input className="right" required value={name} onChange={(e) => setName(e.target.value)} /></label>
           ) : (
-            <div className="cell"><span className="label">Código</span>
+            <label className="cell"><span className="label">Código</span>
               <input className="right" required value={code} maxLength={6} placeholder="A1B2C3" autoCapitalize="characters"
                 style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2 }} onChange={(e) => setCode(e.target.value.toUpperCase())} />
-            </div>
+            </label>
           )}
-          <div className="cell"><span className="label">Tu nombre</span><input className="right" required value={me} onChange={(e) => setMe(e.target.value)} /></div>
+          <label className="cell"><span className="label">Tu nombre</span><input className="right" required value={me} onChange={(e) => setMe(e.target.value)} /></label>
         </Section>
         <div className="content">
           <button className="btn block" disabled={busy}>{busy ? <Spinner /> : mode === 'create' ? 'Crear casa' : 'Unirme'}</button>

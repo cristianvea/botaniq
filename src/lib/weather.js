@@ -54,15 +54,40 @@ export async function fetchWeather(lat, lon, { pastDays = 45, forecastDays = 10 
   };
 }
 
-// Búsqueda de ciudades (geocoding de Open-Meteo)
+// ───────── Lugares (OpenStreetMap / Nominatim) ─────────
+// Permite buscar barrios, calles o direcciones, no solo ciudades. Uso gratuito: máx. 1 petición por segundo.
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+
+function shortName(a = {}, fallback = '') {
+  const street = [a.road || a.pedestrian || a.footway, a.house_number].filter(Boolean).join(' ');
+  const area = a.neighbourhood || a.quarter || a.suburb || a.city_district || a.village || a.hamlet;
+  const city = a.city || a.town || a.municipality || a.village || a.county;
+  const parts = [street, area, city].filter(Boolean);
+  const unique = parts.filter((p, i) => parts.indexOf(p) === i);
+  return unique.length ? unique.join(', ') : fallback.split(',').slice(0, 3).join(',');
+}
+
 export async function searchPlaces(query) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?count=6&language=es&name=${encodeURIComponent(query)}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('No se pudo buscar la ciudad');
-  const j = await res.json();
-  return (j.results || []).map((r) => ({
-    name: [r.name, r.admin1, r.country].filter(Boolean).join(', '),
-    lat: r.latitude,
-    lon: r.longitude,
+  const url = `${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&accept-language=es&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error('No se pudo buscar el lugar. Prueba de nuevo en unos segundos.');
+  const list = await res.json();
+  return list.map((r) => ({
+    name: shortName(r.address, r.display_name),
+    detail: [r.address?.state, r.address?.country].filter(Boolean).join(', '),
+    lat: +(+r.lat).toFixed(4),
+    lon: +(+r.lon).toFixed(4),
   }));
+}
+
+export async function reversePlace(lat, lon) {
+  try {
+    const url = `${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&zoom=16&accept-language=es&lat=${lat}&lon=${lon}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) return null;
+    const r = await res.json();
+    return shortName(r.address, r.display_name || '');
+  } catch {
+    return null;
+  }
 }

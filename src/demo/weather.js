@@ -53,5 +53,7 @@ const PLACES = [
 export async function searchPlaces(q) {
   const n = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return PLACES.filter(([c]) => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(n))
-    .map(([c, r, lat, lon]) => ({ name: `${c}, ${r}, España`, lat, lon }));
+    .map(([c, r, lat, lon]) => ({ name: c, detail: `${r}, España`, lat, lon }));
 }
+
+export async function reversePlace() { return 'Tu ubicación'; }

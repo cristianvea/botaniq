@@ -280,33 +280,33 @@ export default function EditPlantPage(ctx) {
         </button>
         {more && (
           <>
-            <div className="cell">
+            <label className="cell">
               <span className="label">Tipo</span>
-              <select value={form.profile} onChange={(e) => set({ profile: e.target.value })} style={{ marginLeft: 'auto' }}>
+              <select value={form.profile} onChange={(e) => set({ profile: e.target.value })} >
                 {Object.entries(PROFILES).map(([k, p]) => <option key={k} value={k}>{short(p.label)}</option>)}
               </select>
-            </div>
-            <div className="cell">
+            </label>
+            <label className="cell">
               <span className="label">Especie</span>
-              <input className="right" style={{ maxWidth: '68%', fontStyle: 'italic' }} value={form.species || ''} placeholder="Opcional"
+              <input className="right" style={{ fontStyle: 'italic' }} value={form.species || ''} placeholder="Opcional"
                 onChange={(e) => set({ species: e.target.value })} />
-            </div>
-            <div className="cell">
+            </label>
+            <label className="cell">
               <span className="label">Sustrato</span>
-              <select value={form.substrate} onChange={(e) => set({ substrate: e.target.value })} style={{ marginLeft: 'auto' }}>
+              <select value={form.substrate} onChange={(e) => set({ substrate: e.target.value })} >
                 {Object.entries(SUBSTRATES).map(([k, s]) => <option key={k} value={k}>{k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]}</option>)}
               </select>
-            </div>
+            </label>
             {!existing && (
-              <div className="cell">
+              <label className="cell">
                 <span className="label">Fecha del último riego</span>
                 <input type="date" className="right" max={todayStr} value={lastDate}
                   onChange={(e) => { setLastDate(e.target.value); setLastWatered(e.target.value ? 'date' : 'unknown'); }} />
-              </div>
+              </label>
             )}
-            <div className="cell">
+            <label className="cell">
               <textarea rows={2} value={form.notes || ''} onChange={(e) => set({ notes: e.target.value })} placeholder="Notas: abono, de dónde viene…" />
-            </div>
+            </label>
           </>
         )}
       </Section>

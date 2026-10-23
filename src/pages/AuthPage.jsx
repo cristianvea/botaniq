@@ -58,7 +58,7 @@ export default function AuthPage() {
               <input
                 className="field" type={showPass ? 'text' : 'password'} minLength={6} required placeholder="Contraseña"
                 autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoComplete="current-password"
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 style={{ paddingRight: 92 }}
               />

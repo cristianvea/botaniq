@@ -36,9 +36,9 @@ export default function ZoneEditor({ householdId, zone, existingNames = [], onSa
 
   return (
     <div className="group" style={{ marginTop: 8 }}>
-      <div className="cell">
+      <label className="cell">
         <input className="left" autoFocus placeholder="Nombre de la zona" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
+      </label>
       {!zone && !name && suggestions.length > 0 && (
         <div className="cell">
           <div className="chips wrap">

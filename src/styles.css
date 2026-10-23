@@ -493,3 +493,10 @@ button.cell:active, a.cell:active { background: var(--fill-2); }
 .bottom-bar .btn { max-width: 608px; margin: 0 auto; display: flex; }
 .cell.stacked .segmented + .segmented { margin-top: 0; }
 .pot-hint { line-height: 1.35; margin-top: -2px; }
+
+/* Toques más fiables en móvil: filas enteras pulsables y sin retardo de doble toque */
+button, a, input, select, textarea, label, .chip, .cell { touch-action: manipulation; }
+label.cell { cursor: text; }
+label.cell .label { flex-shrink: 0; color: var(--label); }
+.cell input.right, .cell select { flex: 1; max-width: none; min-width: 0; }
+.cell input, .cell select, .cell textarea, .field { font-size: 17px; }
