@@ -753,7 +753,8 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 .navbar.scrolled, .navbar.solid, .hero-bar.scrolled { -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 2px solid var(--sep); }
 .icon-circle { border-radius: 12px; background: var(--card); border: 2px solid var(--sep); border-bottom-width: 3px; }
 .icon-circle:active { transform: translateY(2px); border-bottom-width: 2px; }
-.icon-circle.glass { border: none; }
+.icon-circle.glass { border: none; background: rgba(0, 0, 0, 0.3); color: #fff; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.hero-bar.scrolled .icon-circle.glass { background: var(--card); color: var(--tint); border: 2px solid var(--sep); border-bottom-width: 3px; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .nav-btn { font-weight: 800; }
 
 /* Listas agrupadas → tarjetas con borde */
