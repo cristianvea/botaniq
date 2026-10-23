@@ -560,3 +560,5 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 .why-list { margin: 8px 0 0; padding: 0; list-style: none; font-size: 15px; line-height: 1.4; color: var(--label-2); }
 .why-list li { position: relative; padding-left: 16px; margin-top: 4px; }
 .why-list li::before { content: ''; position: absolute; left: 3px; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--water); }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--label-2); margin-bottom: 2px; }
+.today-line .eyebrow { color: var(--water); }

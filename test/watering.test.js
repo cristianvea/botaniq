@@ -96,7 +96,7 @@ test('pulverizar solo con aire seco y si toca', () => {
 });
 
 test('guía de riego y consejos', () => {
-  assert.equal(wateringGuide({ ...base, profile: 'orquidea' }).method, 'Inmersión');
+  assert.match(wateringGuide({ ...base, profile: 'orquidea' }).method, /^Inmersión/);
   assert.match(wateringGuide({ ...base, pot: 'large' }).amountText, /L/);
   const hot = weather({ tmean: 30, rh: 25, et0: 7 });
   hot.days.forEach((d) => (d.tmax = 36));
@@ -135,6 +135,33 @@ test('maceta sin drenaje: se seca más despacio, menos agua y aviso', () => {
   const drained = dailyRate(base, w.days[30]);
   const closed = dailyRate({ ...base, pot_drainage: false }, w.days[30]);
   assert.ok(closed < drained);
-  assert.ok(contextTips({ ...base, pot_drainage: false }, w).some((t) => t.icon === '⚠️'));
+  assert.ok(wateringGuide({ ...base, pot_drainage: false }).why.some((t) => /sin agujeros/.test(t)));
   assert.match(wateringGuide({ ...base, pot_drainage: false }).amountText, /ml/);
+});
+
+test('modo de riego: nunca inmersión en maceta grande ni sin agujeros', () => {
+  const w = weather();
+  const dry = { status: 'overdue', dryness: 1.3 };
+  const acid = { ...base, profile: 'hortensia', substrate: 'acida' };
+  assert.match(wateringGuide({ ...acid, pot: 'medium' }, { weather: w, status: dry }).today.title, /Inmersión 10/);
+  assert.match(wateringGuide({ ...acid, pot: 'large' }, { weather: w, status: dry }).today.title, /pasadas/);
+  assert.equal(wateringGuide({ ...acid, pot: 'medium', pot_drainage: false }, { weather: w, status: dry }).today, null);
+  // Sin prisa: modo normal por encima y, aparte, qué hacer si se seca del todo
+  const calm = wateringGuide({ ...acid, pot: 'medium' }, { weather: w, status: { status: 'ok', dryness: 0.5 } });
+  assert.equal(calm.today, null);
+  assert.equal(calm.title, 'Por encima del sustrato');
+  assert.match(calm.ifDry, /sumérgela/);
+  assert.equal(wateringGuide({ ...base, profile: 'orquidea', pot: 'large' }).tech, 'top');
+});
+
+test('consejos del tiempo referidos al día de riego', () => {
+  const w = weather({ tmean: 20 });
+  w.days.forEach((d) => (d.tmax = 22));
+  const later = w.days.find((d) => d.date > w.today);
+  later.tmax = 34;
+  const st = { status: 'ok', daysUntil: 1, nextDate: later.date };
+  const tips = contextTips({ ...base, location: 'outdoor' }, w, st);
+  assert.ok(tips.some((t) => /^Mañana, día de riego, llegará a 34°/.test(t.text)));
+  // Si el calor no cae en su día de riego, no se avisa
+  assert.ok(!contextTips({ ...base, location: 'outdoor' }, w, { status: 'ok', daysUntil: 0, nextDate: w.today }).some((t) => t.icon === '🌡️'));
 });

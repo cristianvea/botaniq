@@ -53,7 +53,7 @@ export default function PlantPage(ctx) {
   const zone = zones.find((z) => z.id === plant.zone_id);
   const prof = PROFILES[plant.profile] || PROFILES.generica;
   const guide = wateringGuide(plant, { weather, status: st, events: myEvents });
-  const tips = contextTips(plant, weather);
+  const tips = contextTips(plant, weather, st);
   const mist = mistStatus(plant, myEvents, weather, guide.mist);
   const lastDiag = checkins.find((e) => e.diagnosis);
   const season = seasonalCare(plant, new Date(), household.lat);
@@ -160,11 +160,24 @@ export default function PlantPage(ctx) {
 
       <Section header="Recomendaciones de riego" inset="icon"
         footer={['due', 'overdue', 'soon'].includes(st?.status) ? 'Antes de regar, pulsa «Revisar»: con una foto y el estado de la tierra, BotanIQ afina sus cálculos.' : null}>
+        {guide.today && (
+          <div className="care-line today-line">
+            <span className="cell-icon" style={{ background: 'var(--water)' }}><Icon name="dropFill" size={18} stroke={0} /></span>
+            <div>
+              <div className="eyebrow">Hoy, mejor</div>
+              <div className="t-headline">{guide.today.title}</div>
+              <p className="c2" style={{ marginTop: 2 }}>{guide.today.how}</p>
+              <p className="t-foot c2" style={{ marginTop: 6 }}>{guide.today.why}</p>
+            </div>
+          </div>
+        )}
         <div className="care-line">
-          <span className="cell-icon" style={{ background: 'var(--water)' }}><Icon name={guide.kind === 'soak' || guide.kind === 'tray' ? 'dropFill' : 'drop'} size={18} stroke={2.2} /></span>
+          <span className="cell-icon" style={{ background: guide.today ? '#8e8e93' : 'var(--water)' }}><Icon name={guide.tech === 'soak' || guide.tech === 'tray' ? 'dropFill' : 'drop'} size={18} stroke={guide.tech === 'soak' || guide.tech === 'tray' ? 0 : 2.2} /></span>
           <div>
-            <div className="t-headline">{guide.method}</div>
-            <p className="c2" style={{ marginTop: 2 }}>{guide.how}</p>
+            <div className="eyebrow">{guide.today ? 'Normalmente' : 'Modo de riego'}</div>
+            <div className="t-headline">{guide.title}</div>
+            <div className="t-sub" style={{ marginTop: 1 }}>{guide.detail}</div>
+            <p className="c2" style={{ marginTop: 4 }}>{guide.how}</p>
             {guide.why.length > 0 && (
               <ul className="why-list">
                 {guide.why.map((w, i) => <li key={i}>{w}</li>)}
@@ -176,6 +189,12 @@ export default function PlantPage(ctx) {
           <div className="care-line">
             <span className="cell-icon" style={{ background: '#8e8e93' }}><Icon name="drop" size={18} stroke={2.2} /></span>
             <p className="c2">{guide.alt}</p>
+          </div>
+        )}
+        {guide.ifDry && (
+          <div className="care-line">
+            <span className="cell-icon" style={{ background: '#c66a2c' }}><Icon name="humidity" size={18} stroke={2.2} /></span>
+            <p className="c2">{guide.ifDry}</p>
           </div>
         )}
         {guide.amountText && (
@@ -208,7 +227,7 @@ export default function PlantPage(ctx) {
       </Section>
 
       {tips.length > 0 && (
-        <Section header="Con el tiempo de hoy" inset="icon">
+        <Section header="Según el tiempo" inset="icon">
           {tips.map((t, i) => {
             const [icon, color] = TIP_ICON[t.icon] || ['bulb', '#8e8e93'];
             return (
