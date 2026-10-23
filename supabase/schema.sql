@@ -65,6 +65,10 @@ create table if not exists public.push_subscriptions (
   auth       text not null,
   created_at timestamptz not null default now()
 );
+-- Hora del aviso (local del dispositivo) y último día avisado
+alter table public.push_subscriptions add column if not exists notify_hour smallint not null default 9 check (notify_hour between 0 and 23);
+alter table public.push_subscriptions add column if not exists tz text not null default 'Europe/Madrid';
+alter table public.push_subscriptions add column if not exists last_sent_on date;
 
 -- ───────────── Funciones auxiliares ─────────────
 

@@ -3,6 +3,7 @@ import { waterPlants, mistPlants } from '../lib/actions.js';
 import { mistStatus } from '../lib/watering.js';
 import { wateringGuide } from '../lib/care.js';
 import { seasonInfo, fmtHours } from '../lib/season.js';
+import { canAskPush, alreadyAsked, markAsked } from '../lib/push.js';
 import { NavBar, Section, Icon, Avatar, Meter, StatusPill, fmtRelDays } from '../components/ui.jsx';
 
 const ORDER = { overdue: 0, due: 1, soon: 2, ok: 3 };
@@ -12,6 +13,8 @@ export default function TodayPage(ctx) {
   const { household, households, zones, events, plants: allPlants, statuses, weather, weatherError, photos, loading, selectHousehold } = ctx;
   const [zoneFilter, setZoneFilter] = useState('all');
   const [done, setDone] = useState({});
+  const [hideBanner, setHideBanner] = useState(false);
+  const showBanner = !hideBanner && ctx.push?.ready && !ctx.push.on && allPlants.length > 0 && canAskPush() && !alreadyAsked();
   const zoneById = Object.fromEntries(zones.map((z) => [z.id, z]));
   const filter = zoneFilter === 'all' || zoneById[zoneFilter] ? zoneFilter : 'all';
   const plants = filter === 'all' ? allPlants : allPlants.filter((p) => p.zone_id === filter);
@@ -86,6 +89,18 @@ export default function TodayPage(ctx) {
         </div>
       ) : (
         <Section footer={weatherError ? `Sin datos del tiempo: ${weatherError}` : 'Consultando el tiempo…'} />
+      )}
+
+      {showBanner && (
+        <div className="notify-banner">
+          <div className="notify-glyph"><Icon name="bell" size={22} /></div>
+          <div className="grow">
+            <div className="t-headline">¿Te avisamos para regar?</div>
+            <div className="t-foot c2">Elige a qué hora te viene bien.</div>
+          </div>
+          <button className="btn" onClick={() => ctx.openNotify({ step: 'hour' })}>Activar</button>
+          <button className="icon-circle" aria-label="Ahora no" onClick={() => { markAsked(); setHideBanner(true); }}><Icon name="close" size={14} stroke={2.6} /></button>
+        </div>
       )}
 
       {zones.length > 1 && allPlants.length > 0 && (

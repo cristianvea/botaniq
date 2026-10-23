@@ -21,9 +21,52 @@ export async function currentSubscription() {
   return reg.pushManager.getSubscription();
 }
 
-export async function enablePush(userId) {
+const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid'; } catch { return 'Europe/Madrid'; } })();
+const ASKED_KEY = 'botaniq.notifyAsked';
+
+export const DEFAULT_HOUR = 9;
+export const fmtHour = (h) => `${h}:00`;
+
+// Se puede ofrecer activar avisos en este dispositivo (en iPhone, solo con la app instalada)
+export const canAskPush = () =>
+  pushSupported && (!isIOS || isStandalone) && Notification.permission !== 'denied';
+
+export const alreadyAsked = () => { try { return localStorage.getItem(ASKED_KEY) === '1'; } catch { return false; } };
+export const markAsked = () => { try { localStorage.setItem(ASKED_KEY, '1'); } catch { /* sin almacenamiento */ } };
+
+// Preferencias de este dispositivo: { on, hour }
+export async function pushPrefs() {
+  const sub = await currentSubscription().catch(() => null);
+  if (!sub) return { on: false, hour: DEFAULT_HOUR };
+  const { data } = await supabase.from('push_subscriptions').select('notify_hour').eq('endpoint', sub.endpoint).maybeSingle();
+  return { on: true, hour: data?.notify_hour ?? DEFAULT_HOUR };
+}
+
+export async function setPushHour(hour) {
+  const sub = await currentSubscription();
+  if (!sub) throw new Error('Los avisos no están activados en este dispositivo');
+  const { error } = await supabase.from('push_subscriptions')
+    .update({ notify_hour: hour, tz: TZ, last_sent_on: null }).eq('endpoint', sub.endpoint);
+  if (error) throw error;
+}
+
+// Muestra ya una notificación de ejemplo, para comprobar que llegan
+export async function testNotification() {
+  const reg = await navigator.serviceWorker.ready;
+  await reg.showNotification('💧 Así te avisaremos', {
+    body: 'Salón: Monstera, Potos. Revisa la tierra (y haz una foto) antes de regar.',
+    icon: reg.scope + 'icon-192.png',
+    tag: 'prueba',
+  });
+}
+
+export async function enablePush(userId, hour = DEFAULT_HOUR) {
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') throw new Error('No has dado permiso para notificaciones');
+  if (perm !== 'granted') {
+    throw new Error(isIOS
+      ? 'No has dado permiso. Actívalo en Ajustes del iPhone → Notificaciones → BotanIQ.'
+      : 'No has dado permiso para notificaciones. Actívalo en los ajustes del navegador.');
+  }
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) {
@@ -31,10 +74,14 @@ export async function enablePush(userId) {
   }
   const j = sub.toJSON();
   const { error } = await supabase.from('push_subscriptions').upsert(
-    { user_id: userId, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth },
+    { user_id: userId, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, notify_hour: hour, tz: TZ, last_sent_on: null },
     { onConflict: 'endpoint' }
   );
-  if (error) throw error;
+  if (error) {
+    if (/notify_hour|tz|last_sent_on/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 005_avisos.sql)');
+    throw error;
+  }
+  markAsked();
   return sub;
 }
 

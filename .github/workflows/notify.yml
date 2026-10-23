@@ -2,12 +2,16 @@ name: Avisos de riego
 
 on:
   schedule:
-    # 07:00 UTC = 09:00 en verano / 08:00 en invierno (hora de Madrid)
-    - cron: '0 7 * * *'
+    # Cada hora; el script solo avisa a quien le toca a esa hora (la elige cada uno en la app)
+    - cron: '7 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'Solo simular (no envía nada)'
+        type: boolean
+        default: false
+      force:
+        description: 'Enviar ya a todos, sin esperar a su hora'
         type: boolean
         default: false
 
@@ -31,3 +35,4 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+          FORCE: ${{ inputs.force && '1' || '' }}

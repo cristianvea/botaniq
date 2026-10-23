@@ -2,29 +2,27 @@ import { useEffect, useState } from 'react';
 import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
 import { go } from '../lib/nav.js';
-import { pushSupported, isIOS, isStandalone, currentSubscription, enablePush, disablePush } from '../lib/push.js';
+import { pushSupported, isIOS, isStandalone, disablePush, testNotification, fmtHour } from '../lib/push.js';
 import LocationPicker from '../components/LocationPicker.jsx';
 import ZoneEditor, { zoneKind } from '../components/ZoneEditor.jsx';
 import { NavBar, Section, Cell, Switch, Icon } from '../components/ui.jsx';
 
 export default function SettingsPage(ctx) {
-  const { household, households, user, zones, plants, reload, loadHouseholds, selectHousehold, notify } = ctx;
+  const { household, households, user, zones, plants, reload, loadHouseholds, selectHousehold, notify, push, setPush, openNotify } = ctx;
   const [members, setMembers] = useState([]);
-  const [pushOn, setPushOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editLoc, setEditLoc] = useState(false);
   const [editingZone, setEditingZone] = useState(null);
 
   useEffect(() => { db.householdMembers(household.id).then(setMembers).catch(() => {}); }, [household.id]);
-  useEffect(() => { currentSubscription().then((s) => setPushOn(!!s)).catch(() => {}); }, []);
 
   const me = members.find((m) => m.user_id === user.id)?.display_name || user.email.split('@')[0];
 
   const togglePush = async (on) => {
     setBusy(true);
     try {
-      if (!on) { await disablePush(); setPushOn(false); notify('Avisos desactivados en este dispositivo'); }
-      else { await enablePush(user.id); setPushOn(true); notify('Avisos activados'); }
+      if (!on) { await disablePush(); setPush({ ...push, on: false }); notify('Avisos desactivados en este dispositivo'); }
+      else openNotify({ step: 'hour', mode: 'enable' });
     } catch (e) { notify(e.message); } finally { setBusy(false); }
   };
 
@@ -62,10 +60,20 @@ export default function SettingsPage(ctx) {
       <Section header="Notificaciones" inset="icon"
         footer={pushRow === null
           ? 'En iPhone, primero instala BotanIQ: pulsa Compartir y después «Añadir a pantalla de inicio». Ábrela desde el icono y vuelve aquí.'
-          : pushRow ? 'Cada mañana te avisamos de las plantas que toca regar o pulverizar.' : 'Este navegador no admite notificaciones.'}>
+          : !pushRow ? 'Este navegador no admite notificaciones.'
+          : push.on ? `Te avisamos a las ${fmtHour(push.hour)} solo los días que alguna planta necesite agua o pulverizar. Puede llegar con unos minutos de retraso.`
+          : 'Activa los avisos y elige a qué hora te viene bien que te recordemos regar.'}>
         <Cell icon="bell" iconBg="#ff3b30" title="Avisos de riego">
-          {pushRow && <Switch checked={pushOn} onChange={(v) => !busy && togglePush(v)} label="Avisos de riego" />}
+          {pushRow && <Switch checked={push.on} onChange={(v) => !busy && togglePush(v)} label="Avisos de riego" />}
         </Cell>
+        {pushRow && push.on && (
+          <>
+            <Cell icon="clock" iconBg="#ff9500" title="Hora del aviso" value={fmtHour(push.hour)} chevron
+              onClick={() => openNotify({ step: 'hour', mode: 'change' })} />
+            <Cell icon="bell" iconBg="#8e8e93" title={<span className="c-tint">Enviar un aviso de prueba</span>}
+              onClick={() => testNotification().then(() => notify('Aviso de prueba enviado')).catch((e) => notify(e.message))} />
+          </>
+        )}
       </Section>
 
       <Section header={household.name} inset="icon" footer="Comparte el código para que otras personas cuiden contigo de estas plantas.">

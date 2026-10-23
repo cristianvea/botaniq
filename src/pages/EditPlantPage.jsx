@@ -159,6 +159,7 @@ export default function EditPlantPage(ctx) {
       await reload();
       go(`#/plant/${saved.id}`);
       notify(existing ? 'Cambios guardados' : `${saved.name} añadida`);
+      if (!existing) ctx.maybeAskNotify?.();
     } catch (ex) {
       notify(ex.message);
     } finally {

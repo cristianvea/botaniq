@@ -14,6 +14,8 @@ import CheckinPage from './pages/CheckinPage.jsx';
 import LocationPicker from './components/LocationPicker.jsx';
 import { Hud, TabBar, NavBar, Spinner, Section } from './components/ui.jsx';
 import { go } from './lib/nav.js';
+import NotifySheet from './components/NotifySheet.jsx';
+import { pushPrefs, canAskPush, alreadyAsked } from './lib/push.js';
 
 function parseHash() {
   const [, name = '', id] = window.location.hash.split('/');
@@ -25,6 +27,8 @@ const ACTIVE_KEY = 'botaniq.household';
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [route, setRoute] = useState(parseHash());
+  const [push, setPush] = useState({ on: false, hour: 9, ready: false });
+  const [notifySheet, setNotifySheet] = useState(null); // { step, mode }
   const [households, setHouseholds] = useState(null);
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY));
   const [plants, setPlants] = useState([]);
@@ -106,6 +110,12 @@ export default function App() {
       .catch((e) => setWeatherError(e.message));
   }, [household?.lat, household?.lon]);
 
+  // Avisos de este dispositivo
+  useEffect(() => {
+    if (!session) return;
+    pushPrefs().then((p) => setPush({ ...p, ready: true })).catch(() => setPush((p) => ({ ...p, ready: true })));
+  }, [session]);
+
   const statuses = useMemo(() => {
     if (!weather) return {};
     const byPlant = {};
@@ -124,6 +134,13 @@ export default function App() {
   const ctx = {
     user, household, households, plants, events, zones, weather, weatherError, statuses, photos, loading,
     reload, loadHouseholds, selectHousehold, notify: (text, action) => setToast({ text, action, ts: Date.now() }),
+    push, setPush,
+    // Abre la hoja de avisos: { step: 'ask' | 'hour', mode: 'enable' | 'change' }
+    openNotify: (opts = {}) => setNotifySheet({ step: 'ask', mode: 'enable', ...opts }),
+    // Tras añadir una planta: pregunta una sola vez si quieres avisos
+    maybeAskNotify: () => {
+      if (push.ready && !push.on && canAskPush() && !alreadyAsked()) setTimeout(() => setNotifySheet({ step: 'ask', mode: 'enable' }), 700);
+    },
   };
 
   let page;
@@ -160,6 +177,11 @@ export default function App() {
     <>
       {page}
       {tab && <TabBar active={tab} badge={dueCount} />}
+      {notifySheet && (
+        <NotifySheet {...notifySheet} user={user} hour={push.hour} notify={ctx.notify}
+          onClose={() => setNotifySheet(null)}
+          onDone={(hour) => { setPush({ on: true, hour, ready: true }); setNotifySheet(null); }} />
+      )}
       {toast && <Hud {...toast} onClose={() => setToast(null)} />}
     </>
   );

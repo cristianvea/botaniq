@@ -7,6 +7,7 @@ import { wateringGuide, contextTips } from '../lib/care.js';
 import { seasonalCare, fmtHours } from '../lib/season.js';
 import { OVERALL } from '../lib/diagnose.js';
 import { waterPlants, mistPlants } from '../lib/actions.js';
+import { canAskPush, fmtHour } from '../lib/push.js';
 import {
   Section, Cell, Icon, Ring, StatusPill, Sheet, useScrolled, drynessColor, fmtRelDays, Avatar,
 } from '../components/ui.jsx';
@@ -123,6 +124,16 @@ export default function PlantPage(ctx) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <StatusPill status={st} />
           <div className="t-headline" style={{ marginTop: 8 }}>{nextText}</div>
+          {st && st.status !== 'due' && st.status !== 'overdue' && st.daysUntil < 60 && (ctx.push?.on ? (
+            <div className="t-foot notify-note"><Icon name="bell" size={14} />
+              Te avisaremos {st.daysUntil === 1 ? 'mañana' : `el ${new Date(st.nextDate + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long' })}`} a las {fmtHour(ctx.push.hour)}
+            </div>
+          ) : canAskPush() && (
+            <button className="t-foot notify-note c-tint" style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer' }}
+              onClick={() => ctx.openNotify({ step: 'hour' })}>
+              <Icon name="bell" size={14} /> Avísame ese día
+            </button>
+          ))}
           <div className="t-foot c2" style={{ marginTop: 4, lineHeight: 1.4 }}>
             {st ? <>Sequedad estimada: {Math.round(st.dryness * 100)} %<br />Último riego: {st.lastWatered ? fmtRelDays(st.daysSinceWater).toLowerCase() : 'sin registrar'}</> : null}
           </div>
