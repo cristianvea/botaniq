@@ -1,7 +1,8 @@
 // Identificación con Pl@ntNet (https://my.plantnet.org)
 // La clave debe estar "expuesta" y con tu dominio en "Authorized domains".
 
-const KEY = import.meta.env.VITE_PLANTNET_KEY;
+// trim(): un espacio o salto de línea al copiar la clave en GitHub la invalida
+const KEY = (import.meta.env.VITE_PLANTNET_KEY || '').trim();
 export const plantnetEnabled = Boolean(KEY);
 
 export async function identifyPlant(blob, organ = 'auto') {
@@ -9,7 +10,7 @@ export async function identifyPlant(blob, organ = 'auto') {
   const form = new FormData();
   form.append('images', blob, 'planta.jpg');
   form.append('organs', organ);
-  const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${KEY}&lang=es&nb-results=5&include-related-images=false`;
+  const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${encodeURIComponent(KEY)}&lang=es&nb-results=5&include-related-images=false`;
   let res;
   try {
     res = await fetch(url, { method: 'POST', body: form });
@@ -19,7 +20,10 @@ export async function identifyPlant(blob, organ = 'auto') {
   }
   if (res.status === 404) return []; // Pl@ntNet devuelve 404 si no reconoce ninguna especie
   if (res.status === 401 || res.status === 403) {
-    throw new Error(`La clave de Pl@ntNet no es válida o no autoriza este dominio (${location.hostname}). Revísalo en my.plantnet.org → Settings → API key.`);
+    const body = await res.text().catch(() => '');
+    let detail = body;
+    try { detail = JSON.parse(body).message || body; } catch { /* texto plano */ }
+    throw new Error(`Pl@ntNet rechaza la clave (${res.status}: ${String(detail).slice(0, 120)}). Clave usada: ${KEY.slice(0, 6)}…${KEY.slice(-3)} (${KEY.length} caracteres). Dominio: ${location.hostname}.`);
   }
   if (res.status === 429) throw new Error('Se ha agotado el cupo diario de identificaciones de Pl@ntNet. Prueba mañana.');
   if (!res.ok) {
