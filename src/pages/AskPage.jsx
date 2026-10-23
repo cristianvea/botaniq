@@ -11,6 +11,7 @@ const EXAMPLES = [
   { text: 'Tengo este abono, ¿qué tipo es y cómo lo uso?', label: 'Tengo este abono', hint: 'Hazle una foto a la etiqueta', photo: true },
   { text: '¿Crees que necesita más luz?' },
   { text: '¿Por qué se le ponen las hojas amarillas?' },
+  { text: '¿Cuándo debería trasplantarla?' },
 ];
 
 export default function AskPage(ctx) {
