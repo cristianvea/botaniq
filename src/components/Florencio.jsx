@@ -5,7 +5,7 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
   const head = mood === 'head';
   const vb = head ? '24 22 72 74' : '0 0 140 140';
   return (
-    <svg className={`flo flo-${mood}`} width={size} height={size} viewBox={vb} role="img" aria-label={title}>
+    <svg className={`flo flo-${mood}`} overflow={thinking ? 'hidden' : 'visible'} width={size} height={size} viewBox={vb} role="img" aria-label={title}>
       {!head && (
         <g className="flo-body">
           {/* Camisa */}
@@ -53,20 +53,26 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
         <circle cx="77" cy="70" r="4.5" fill="#f19a8a" opacity="0.45" />
         <ellipse cx="60" cy="68" rx="5.5" ry="4.5" fill="#eaa57e" />
         {/* Boca (sonríe si no piensa) */}
-        {thinking
-          ? <path d="M56 83.5h8" stroke="#8a4b3a" strokeWidth="1.8" strokeLinecap="round" />
-          : <path d="M54 82c3 3.5 9 3.5 12 0" stroke="#8a4b3a" strokeWidth="1.8" fill="none" strokeLinecap="round" />}
+        {thinking ? (
+          <>
+            <path className="flo-mouth-flat" d="M56 83.5h8" stroke="#8a4b3a" strokeWidth="1.8" strokeLinecap="round" />
+            <path className="flo-mouth-smile" d="M54 82c3 3.5 9 3.5 12 0" stroke="#8a4b3a" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+          </>
+        ) : <path d="M54 82c3 3.5 9 3.5 12 0" stroke="#8a4b3a" strokeWidth="1.8" fill="none" strokeLinecap="round" />}
         {/* Bigote */}
         <path className="flo-mustache" d="M60 72.5c-7-2.5-17-1-21.5 7 6-1 10 2.5 15.5.5 3-1 5-2.6 6-4 1 1.4 3 3 6 4 5.5 2 9.5-1.5 15.5-.5-4.5-8-14.5-9.5-21.5-7z" fill="#fbfbf8" stroke="#dcdcd4" strokeWidth="1" />
       </g>
 
       {thinking && (
         <>
-          {/* Mano en la barbilla */}
+          {/* Brazo: barbilla → rascarse la cabeza → barbilla → ¡idea! (el brazo es largo para que no se vea cortado al subir) */}
           <g className="flo-hand">
-            <path d="M104 140c0-14-8-26-24-38" stroke="#f3e2bf" strokeWidth="13" strokeLinecap="round" fill="none" />
-            <circle cx="76" cy="94" r="8" fill="#f2bf98" />
-            <path d="M70 90c2-4 6-6 9-5" stroke="#e5ab84" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M112 210L104 140c0-14-8-26-24-38" stroke="#f3e2bf" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <g className="flo-fingers">
+              <rect className="flo-index" x="73" y="80" width="5" height="12" rx="2.5" fill="#f2bf98" />
+              <circle cx="76" cy="94" r="8" fill="#f2bf98" />
+              <path d="M70 90c2-4 6-6 9-5" stroke="#e5ab84" strokeWidth="3" strokeLinecap="round" fill="none" />
+            </g>
           </g>
           {/* Burbujas de pensamiento */}
           <g className="flo-thought">
@@ -77,6 +83,10 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
               <path className="i1" d="M121 18v-8m0 0c-5 0-7-3-7-6 4 0 7 2 7 6zm0-1c4 0 7-3 7-6-4 0-7 2-7 6z" fill="#66bb6a" stroke="#2e7d32" strokeWidth="1" />
               <path className="i2" d="M121 4c-3 4-6 7-6 10a6 6 0 0 0 12 0c0-3-3-6-6-10z" fill="#5ac8fa" />
               <circle className="i3" cx="121" cy="12" r="5" fill="#ffcc00" />
+              <g className="i4">
+                <path d="M121 3.5a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 121 3.5z" fill="#ffd60a" />
+                <rect x="118.5" y="17.3" width="5" height="2.4" rx="1" fill="#8e8e93" />
+              </g>
             </g>
           </g>
         </>

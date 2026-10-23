@@ -640,19 +640,63 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 
 /* ── Florencio (personaje) ── */
 .flo { display: block; overflow: visible; --flo-bubble: var(--card); }
+.flo.flo-thinking { overflow: hidden; }
 .flo * { transform-box: fill-box; }
 .flo-eyes ellipse, .flo-eyes circle { transform-origin: center; animation: flo-blink 4.2s infinite; }
 .flo-mustache { transform-origin: center top; animation: flo-mustache 2.6s ease-in-out infinite; }
 .flo-idle .flo-head { transform-box: view-box; transform-origin: 60px 100px; animation: flo-bob 3.2s ease-in-out infinite; }
-.flo-thinking .flo-head { transform-box: view-box; transform-origin: 60px 100px; animation: flo-tilt 2.8s ease-in-out infinite; }
-.flo-thinking .flo-brows path { transform-origin: center; animation: flo-brow 2.8s ease-in-out infinite; }
-.flo-hand { transform-box: view-box; animation: flo-tap 0.9s ease-in-out infinite alternate; }
-.flo-thought .b1 { animation: flo-pop 2.4s ease-in-out infinite; }
-.flo-thought .b2 { animation: flo-pop 2.4s ease-in-out 0.25s infinite; }
-.flo-thought .b3 { transform-origin: center; animation: flo-float 2.4s ease-in-out 0.5s infinite; }
-.flo-thought .i1, .flo-thought .i2, .flo-thought .i3 { opacity: 0; animation: flo-cycle 7.2s infinite; }
-.flo-thought .i2 { animation-delay: 2.4s; }
-.flo-thought .i3 { animation-delay: 4.8s; }
+.flo-thinking .flo-head { transform-box: view-box; transform-origin: 60px 100px; animation: flo-head-seq 8s ease-in-out infinite; }
+.flo-thinking .flo-eyes { animation: flo-eyes-seq 8s ease-in-out infinite; }
+.flo-thinking .flo-brows path { transform-origin: center; animation: flo-brow-seq 8s ease-in-out infinite; }
+.flo-hand { transform-box: view-box; animation: flo-hand-seq 8s cubic-bezier(.5,0,.3,1) infinite; }
+.flo-fingers { transform-box: view-box; transform-origin: 76px 94px; animation: flo-fingers-seq 8s ease-in-out infinite; }
+.flo-index { opacity: 0; animation: flo-index-seq 8s step-end infinite; }
+.flo-mouth-smile { opacity: 0; animation: flo-smile-seq 8s step-end infinite; }
+.flo-mouth-flat { animation: flo-flat-seq 8s step-end infinite; }
+.flo-thought .b1 { animation: flo-pop 2s ease-in-out infinite; }
+.flo-thought .b2 { animation: flo-pop 2s ease-in-out 0.25s infinite; }
+.flo-thought .b3 { transform-origin: center; animation: flo-bubble-seq 8s ease-in-out infinite; }
+.flo-thought .i1, .flo-thought .i2, .flo-thought .i3, .flo-thought .i4 { opacity: 0; animation: flo-icon 8s infinite; }
+.flo-thought .i2 { animation-delay: 2s; }
+.flo-thought .i3 { animation-delay: 4s; }
+.flo-thought .i4 { animation-delay: 6s; }
+/* 1) mano en la barbilla mirando arriba · 2) se rasca la cabeza · 3) mira de reojo con la ceja alzada · 4) ¡idea! dedo arriba y sonrisa */
+@keyframes flo-hand-seq {
+  0%, 21% { transform: translate(0, 0); }
+  26%, 45% { transform: translate(13px, -46px); }
+  50%, 70% { transform: translate(0, 0); }
+  75%, 94% { transform: translate(24px, -22px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes flo-fingers-seq {
+  0%, 4%, 8%, 12%, 16% { transform: translateY(0); }
+  2%, 6%, 10%, 14%, 18% { transform: translateY(-2px); }
+  28%, 32%, 36%, 40%, 44% { transform: rotate(-14deg); }
+  30%, 34%, 38%, 42% { transform: rotate(10deg); }
+  78%, 92% { transform: rotate(-8deg); }
+  85% { transform: rotate(6deg); }
+}
+@keyframes flo-index-seq { 0%, 74% { opacity: 0; } 75%, 95% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes flo-head-seq {
+  0%, 21% { transform: rotate(-5deg); }
+  26%, 45% { transform: rotate(6deg); }
+  50%, 70% { transform: rotate(-2deg) translateX(-1px); }
+  76% { transform: rotate(0) translateY(-5px); }
+  80%, 94% { transform: rotate(0) translateY(-1px); }
+  100% { transform: rotate(-5deg); }
+}
+@keyframes flo-eyes-seq {
+  0%, 21% { transform: translate(2px, -2.5px); }
+  26%, 45% { transform: translate(-1px, -3px); }
+  50%, 70% { transform: translate(-3px, 0.5px); }
+  75%, 94% { transform: translate(0, -1px); }
+  100% { transform: translate(2px, -2.5px); }
+}
+@keyframes flo-brow-seq { 0%, 49%, 71%, 74%, 96%, 100% { transform: translateY(0); } 52%, 68% { transform: translateY(-2px); } 77%, 92% { transform: translateY(-3px); } }
+@keyframes flo-smile-seq { 0%, 74% { opacity: 0; } 75%, 95% { opacity: 1; } 96%, 100% { opacity: 0; } }
+@keyframes flo-flat-seq { 0%, 74% { opacity: 1; } 75%, 95% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes flo-bubble-seq { 0%, 70% { transform: translateY(0) scale(1); } 75% { transform: translateY(-1px) scale(1.12); } 80%, 94% { transform: translateY(-1px) scale(1.08); } 100% { transform: scale(1); } }
+@keyframes flo-icon { 0% { opacity: 0; } 3%, 22% { opacity: 1; } 25%, 100% { opacity: 0; } }
 .flo-wave { transform-box: view-box; transform-origin: 100px 140px; animation: flo-wave 2.4s ease-in-out infinite; }
 @keyframes flo-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
 @keyframes flo-mustache { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-3deg); } 60% { transform: rotate(3deg); } }
@@ -664,7 +708,7 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 @keyframes flo-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 @keyframes flo-cycle { 0% { opacity: 0; } 4%, 30% { opacity: 1; } 34%, 100% { opacity: 0; } }
 @keyframes flo-wave { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-10deg); } 80% { transform: rotate(6deg); } 90% { transform: rotate(-6deg); } }
-@media (prefers-reduced-motion: reduce) { .flo * { animation: none !important; } .flo-thought .i1 { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .flo * { animation: none !important; } .flo-thought .i1, .flo-mouth-flat { opacity: 1; } }
 
 .msg-bot.flo-thinking-row { display: flex; flex-direction: row; align-items: flex-end; gap: 8px; }
 .flo-thinking-row .msg-model { padding: 0 0 10px; font-size: 14px; color: var(--label-2); }
