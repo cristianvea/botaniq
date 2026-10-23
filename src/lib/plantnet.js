@@ -10,11 +10,21 @@ export async function identifyPlant(blob, organ = 'auto') {
   form.append('images', blob, 'planta.jpg');
   form.append('organs', organ);
   const url = `https://my-api.plantnet.org/v2/identify/all?api-key=${KEY}&lang=es&nb-results=5&include-related-images=false`;
-  const res = await fetch(url, { method: 'POST', body: form });
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', body: form });
+  } catch {
+    // El navegador bloquea la petición (CORS): casi siempre falta autorizar el dominio en Pl@ntNet
+    throw new Error(`Pl@ntNet ha rechazado la conexión. En my.plantnet.org → Settings → API key, marca «Expose my API key» y añade «${location.hostname}» en «Authorized domains».`);
+  }
   if (res.status === 404) return []; // Pl@ntNet devuelve 404 si no reconoce ninguna especie
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`La clave de Pl@ntNet no es válida o no autoriza este dominio (${location.hostname}). Revísalo en my.plantnet.org → Settings → API key.`);
+  }
+  if (res.status === 429) throw new Error('Se ha agotado el cupo diario de identificaciones de Pl@ntNet. Prueba mañana.');
   if (!res.ok) {
     const txt = await res.text().catch(() => '');
-    throw new Error(`Pl@ntNet ${res.status}: ${txt.slice(0, 140)}`);
+    throw new Error(`Pl@ntNet respondió con un error (${res.status}). ${txt.slice(0, 120)}`);
   }
   const j = await res.json();
   return (j.results || []).map((r) => ({

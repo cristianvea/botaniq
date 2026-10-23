@@ -141,6 +141,12 @@ export default function PlantPage(ctx) {
         )}
       </div>
 
+      {!plant.species && (
+        <Section footer="Sin la especie, los cuidados son genéricos. Con la foto la identifico y ajusto el riego.">
+          <Cell icon="sparkles" iconBg="#34c759" title={<span className="c-tint">Identificar la planta</span>} chevron href={`#/edit/${plant.id}`} />
+        </Section>
+      )}
+
       <Section header="Cómo regarla" inset="icon"
         footer={['due', 'overdue', 'soon'].includes(st?.status) ? 'Antes de regar, pulsa «Revisar»: con una foto y el estado de la tierra, BotanIQ afina sus cálculos.' : null}>
         <div className="care-line">

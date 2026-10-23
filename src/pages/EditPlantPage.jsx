@@ -30,7 +30,10 @@ export default function EditPlantPage(ctx) {
 
   const [step, setStep] = useState(existing ? 'confirm' : 'capture'); // capture | identifying | confirm
   const [form, setForm] = useState(() => (existing ? { ...EMPTY, ...existing } : { ...EMPTY, zone_id: defaultZone(zones) }));
-  const [touched, setTouched] = useState({ name: !!existing, light: !!existing, zone: !!existing });
+  const [touched, setTouched] = useState({ name: !!existing, light: !!existing, zone: !!existing, profile: false });
+  const [identifying, setIdentifying] = useState(false);
+  const [askMismatch, setAskMismatch] = useState(false);
+  const [mismatchOk, setMismatchOk] = useState(false);
   const [photoBlob, setPhotoBlob] = useState(null);
   const [preview, setPreview] = useState(existing ? photos[existing.photo_path] : null);
   const [candidates, setCandidates] = useState([]);
@@ -58,7 +61,8 @@ export default function EditPlantPage(ctx) {
     const profile = profileForTaxon(c);
     const sug = suggestedPlacement(profile);
     setForm((f) => {
-      const patch = { species: c.species, genus: c.genus || '', family: c.family || '', common_name: c.commonName || '', profile };
+      const patch = { species: c.species, genus: c.genus || '', family: c.family || '', common_name: c.commonName || '' };
+      if (!touched.profile) patch.profile = profile;
       if (!touched.name) patch.name = cap(c.commonName || c.species);
       if (!touched.light) patch.light = sug.light;
       if (!touched.zone && zones.length) {
@@ -71,6 +75,34 @@ export default function EditPlantPage(ctx) {
     setPicked(c.species);
   };
 
+  // Identifica con Pl@ntNet. Si el usuario ya eligió un tipo a mano, no lo pisamos: avisamos si no coincide.
+  const runIdentify = async (blob) => {
+    if (!plantnetEnabled) { setIdError('La identificación no está configurada (falta la clave de Pl@ntNet).'); return; }
+    setIdentifying(true); setIdError(null); setMismatchOk(false);
+    try {
+      const r = await identifyPlant(blob, 'auto');
+      setCandidates(r);
+      if (r.length && r[0].score >= 0.5) apply(r[0]);
+      else if (r.length) setShowAlts(true);
+      else setIdError('No he reconocido la especie en esta foto. Prueba con otra más cercana a las hojas o flores.');
+    } catch (ex) {
+      setIdError(ex.message);
+    } finally {
+      setIdentifying(false);
+    }
+  };
+
+  const currentBlob = async () => {
+    if (photoBlob) return photoBlob;
+    if (!preview) return null;
+    try { return await (await fetch(preview)).blob(); } catch { return null; }
+  };
+
+  const retryIdentify = async () => {
+    const b = await currentBlob();
+    if (b) runIdentify(b); else setIdError('Añade una foto para poder identificarla.');
+  };
+
   const onPhoto = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -78,22 +110,24 @@ export default function EditPlantPage(ctx) {
     const blob = await resizeImage(file);
     setPhotoBlob(blob);
     setPreview(URL.createObjectURL(blob));
-    if (existing || !plantnetEnabled) { setStep('confirm'); return; }
-    setStep('identifying'); setIdError(null);
-    try {
-      const r = await identifyPlant(blob, 'auto');
-      setCandidates(r);
-      if (r.length && r[0].score >= 0.5) apply(r[0]);
-      else if (r.length) setShowAlts(true);
-      else setIdError('No he reconocido la especie. Escribe el nombre y elige el tipo en «Más opciones».');
-    } catch (ex) {
-      setIdError(`No se pudo identificar: ${ex.message}`);
-    }
+    if (existing) { setStep('confirm'); runIdentify(blob); return; }
+    setStep('identifying');
+    await runIdentify(blob);
     setStep('confirm');
   };
 
-  const save = async () => {
+  // Planta ya guardada sin especie: la identificamos con su foto al abrir la edición
+  useEffect(() => {
+    if (existing && !existing.species && existing.photo_path && plantnetEnabled) {
+      let alive = true;
+      (async () => { const b = await currentBlob(); if (alive && b) runIdentify(b); })();
+      return () => { alive = false; };
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = async (force = false) => {
     if (!form.name.trim()) return notify('Ponle un nombre a la planta');
+    if (!force && mismatch && !mismatchOk) { setAskMismatch(true); return; }
     if (lastWatered === 'date' && !lastDate) return notify('Elige la fecha del último riego');
     setSaving(true);
     try {
@@ -174,6 +208,10 @@ export default function EditPlantPage(ctx) {
   // ───────── 3. Confirmación ─────────
   const top = candidates.find((c) => c.species === picked);
   const prof = PROFILES[form.profile] || PROFILES.generica;
+  // ¿El tipo elegido a mano contradice lo que dice la foto?
+  const idProfile = top ? profileForTaxon(top) : null;
+  const mismatch = !!(top && idProfile && idProfile !== form.profile && top.score >= 0.3);
+  const idName = top ? `${cap(top.commonName || top.species)} (${top.species})` : '';
   const simpleSub = form.substrate === 'unknown' || form.substrate === 'cactus';
   const todayStr = new Date().toLocaleDateString('en-CA');
 
@@ -182,7 +220,7 @@ export default function EditPlantPage(ctx) {
       <NavBar
         title={existing ? 'Editar planta' : 'Confirmar'}
         left={<a className="nav-btn" href={back}>Cancelar</a>}
-        right={<button className="nav-btn bold" disabled={saving} onClick={save}>{saving ? <Spinner /> : 'Guardar'}</button>}
+        right={<button className="nav-btn bold" disabled={saving} onClick={() => save()}>{saving ? <Spinner /> : 'Guardar'}</button>}
       />
 
       {/* Cabecera: foto + nombre + especie */}
@@ -201,7 +239,36 @@ export default function EditPlantPage(ctx) {
           </div>
         </div>
       </div>
-      {idError && <p className="section-footer" style={{ margin: '-12px 16px 18px' }}>{idError}</p>}
+      {identifying && (
+        <Section><div className="cell"><Spinner /><span className="c2">Identificando la planta…</span></div></Section>
+      )}
+      {idError && !identifying && (
+        <Section footer={idError}>
+          <button type="button" className="cell" onClick={retryIdentify}>
+            <span className="cell-icon" style={{ background: '#ff9500' }}><Icon name="sparkles" size={18} stroke={2.2} /></span>
+            <div className="cell-main"><div className="cell-title c-tint">Volver a identificar</div></div>
+          </button>
+        </Section>
+      )}
+      {existing && !identifying && !idError && !top && plantnetEnabled && (preview || photoBlob) && (
+        <Section>
+          <button type="button" className="cell" onClick={retryIdentify}>
+            <span className="cell-icon" style={{ background: '#34c759' }}><Icon name="sparkles" size={18} stroke={2.2} /></span>
+            <div className="cell-main"><div className="cell-title c-tint">{form.species ? 'Volver a identificar con la foto' : 'Identificar con la foto'}</div></div>
+          </button>
+        </Section>
+      )}
+      {mismatch && !mismatchOk && (
+        <Section footer={`Has elegido «${short(prof.label)}», pero la foto se parece a ${idName} con un ${Math.round(top.score * 100)} % de confianza, que es «${short(PROFILES[idProfile].label)}». El tipo cambia la frecuencia y la forma de riego.`}>
+          <button type="button" className="cell" onClick={() => { set({ profile: idProfile }); setTouched((t) => ({ ...t, profile: false })); }}>
+            <span className="cell-icon" style={{ background: '#ff9500' }}><Icon name="sparkles" size={18} stroke={2.2} /></span>
+            <div className="cell-main"><div className="cell-title c-tint">Usar «{short(PROFILES[idProfile].label)}»</div></div>
+          </button>
+          <button type="button" className="cell" onClick={() => setMismatchOk(true)}>
+            <div className="cell-main" style={{ paddingLeft: 42 }}><div className="cell-title">Mantener «{short(prof.label)}»</div></div>
+          </button>
+        </Section>
+      )}
 
       <Section footer={prof.tip}>
         {/* Zona */}
@@ -280,7 +347,7 @@ export default function EditPlantPage(ctx) {
         </button>
         {more && (
           <>
-            <SelectField label="Tipo de planta" value={form.profile} onChange={(v) => set({ profile: v })}
+            <SelectField label="Tipo de planta" value={form.profile} onChange={(v) => { setTouched((t) => ({ ...t, profile: true })); setMismatchOk(false); set({ profile: v }); }}
               options={Object.entries(PROFILES).map(([k, p]) => [k, short(p.label)])} />
             <TextField label="Especie" value={form.species || ''} placeholder="Nombre científico (opcional)" autoCorrect="off"
               style={{ fontStyle: form.species ? 'italic' : 'normal' }} onChange={(e) => set({ species: e.target.value })} />
@@ -297,9 +364,27 @@ export default function EditPlantPage(ctx) {
       </Section>
 
       <div className="bottom-bar">
-        <button className="btn block" disabled={saving} onClick={save}>{saving ? <Spinner /> : existing ? 'Guardar cambios' : 'Guardar planta'}</button>
+        <button className="btn block" disabled={saving} onClick={() => save()}>{saving ? <Spinner /> : existing ? 'Guardar cambios' : 'Guardar planta'}</button>
       </div>
 
+      {askMismatch && top && (
+        <Sheet onClose={() => setAskMismatch(false)}>
+          <div className="content" style={{ padding: '8px 16px 16px' }}>
+            <div className="t-title3">¿Seguro que es «{short(prof.label)}»?</div>
+            <p className="t-sub c2" style={{ marginTop: 6, lineHeight: 1.4 }}>
+              Según la foto, al {Math.round(top.score * 100)} % de confianza parece <b>{idName}</b>, que es «{short(PROFILES[idProfile].label)}».
+            </p>
+          </div>
+          <div className="content stack">
+            <button className="btn block" onClick={() => { setAskMismatch(false); set({ profile: idProfile }); setTimeout(() => document.querySelector('.bottom-bar .btn')?.click(), 0); }}>
+              Usar «{short(PROFILES[idProfile].label)}»
+            </button>
+            <button className="btn gray block" onClick={() => { setAskMismatch(false); setMismatchOk(true); save(true); }}>
+              Guardar con «{short(prof.label)}»
+            </button>
+          </div>
+        </Sheet>
+      )}
       {showAlts && (
         <Sheet onClose={() => setShowAlts(false)}>
           <div className="content" style={{ padding: '8px 16px 14px' }}>

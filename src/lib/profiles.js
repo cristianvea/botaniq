@@ -59,7 +59,7 @@ export const PROFILES = {
     tip: 'En maceta se seca mucho más que en suelo. Riega a fondo.',
   },
   hortensia: {
-    label: 'Hortensia, azalea, camelia (acidófilas)', emoji: '💠', baseDays: 4, defaultSubstrate: 'acida',
+    label: 'Acidófila (brezo, hortensia, azalea, camelia…)', emoji: '💠', baseDays: 4, defaultSubstrate: 'acida',
     tip: 'Usa agua sin cal (de lluvia o reposada). Le gusta el sustrato fresco.',
   },
   carnivora: {
