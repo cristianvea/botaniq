@@ -3,7 +3,7 @@
 export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio' }) {
   const thinking = mood === 'thinking';
   const head = mood === 'head';
-  const vb = head ? '24 22 72 74' : '0 0 140 140';
+  const vb = head ? '18 14 84 84' : '0 0 140 140';
   return (
     <svg className={`flo flo-${mood}`} overflow={thinking ? 'hidden' : 'visible'} width={size} height={size} viewBox={vb} role="img" aria-label={title}>
       {!head && (
@@ -35,6 +35,14 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
           <circle cx="32" cy="54" r="7.5" /><circle cx="29" cy="62" r="7" /><circle cx="33" cy="70" r="6" />
           <circle cx="88" cy="54" r="7.5" /><circle cx="91" cy="62" r="7" /><circle cx="87" cy="70" r="6" />
           <path d="M52 37c2-6 10-8 13-3 3-4 9-1 8 4-6-3-14-4-21-1z" />
+        </g>
+        {/* Sombrero de paja de jardinero */}
+        <g className="flo-hat">
+          <ellipse cx="60" cy="42" rx="39" ry="8" fill="#e6c472" stroke="#c9a14e" strokeWidth="1.2" />
+          <path d="M41 42c0-12 8-20 19-20s19 8 19 20c-6 2.5-32 2.5-38 0z" fill="#efd283" stroke="#c9a14e" strokeWidth="1.2" />
+          <path d="M42 37.5c6 2.2 30 2.2 36 0l.7 4.3c-6.5 2.4-30.9 2.4-37.4 0z" fill="#3f8f5b" />
+          <path d="M47 30c4-1.5 9-2 13-2M50 25.5c3-1 7-1.3 10-1.2M30 43.5c6 1.6 12 2.4 18 2.6M90 43.5c-6 1.6-12 2.4-18 2.6" stroke="#c9a14e" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity="0.8" />
+          <path d="M75 37c3-4 8-4 9-1-3 2-6 2-9 1z" fill="#66bb6a" />
         </g>
         {/* Cejas pobladas */}
         <g className="flo-brows" fill="#fbfbf8" stroke="#dcdcd4" strokeWidth="0.8">
@@ -76,8 +84,8 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
           </g>
           {/* Burbujas de pensamiento */}
           <g className="flo-thought">
-            <circle className="b1" cx="94" cy="36" r="3" fill="var(--flo-bubble, #fff)" />
-            <circle className="b2" cx="103" cy="25" r="5" fill="var(--flo-bubble, #fff)" />
+            <circle className="b1" cx="101" cy="31" r="3" fill="var(--flo-bubble, #fff)" />
+            <circle className="b2" cx="108" cy="22" r="4.5" fill="var(--flo-bubble, #fff)" />
             <g className="b3">
               <ellipse cx="121" cy="12" rx="15" ry="11" fill="var(--flo-bubble, #fff)" />
               <path className="i1" d="M121 18v-8m0 0c-5 0-7-3-7-6 4 0 7 2 7 6zm0-1c4 0 7-3 7-6-4 0-7 2-7 6z" fill="#66bb6a" stroke="#2e7d32" strokeWidth="1" />
