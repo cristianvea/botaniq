@@ -110,7 +110,7 @@ export default function AskPage(ctx) {
 
   return (
     <div className="screen with-tabs ask">
-      <NavBar title="Florencio" large sub="Tu botánico de cabecera"
+      <NavBar title="Florencio" large sub="Tu botánico de confianza"
         right={messages?.length ? <button className="icon-circle" onClick={clear} aria-label="Borrar conversación"><Icon name="trash" size={18} /></button> : null} />
 
       {plants.length > 0 && (
@@ -131,7 +131,7 @@ export default function AskPage(ctx) {
           <div className="ask-glyph florencio">F</div>
           <h2 className="t-title3">¡Hola! Soy Florencio</h2>
           <p className="t-sub c2">
-            Tu botánico de cabecera. {focusPlant ? `Ya conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Ya conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
+            Tu botánico de confianza. {focusPlant ? `Ya conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Ya conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
             {' '}Pregúntame lo que quieras, y si me mandas una foto de la planta o de la etiqueta de un abono, mejor que mejor.
           </p>
           <div className="ask-examples">

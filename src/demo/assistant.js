@@ -22,7 +22,7 @@ export async function askAssistant({ messages, context, image }) {
     };
   }
   return {
-    answer: '¡Hola! Soy Florencio, tu botánico de cabecera. En la demo solo sé responder a un par de ejemplos. Prueba con «Tengo este abono, ¿cómo lo uso?» o «¿Crees que necesita más luz?».',
+    answer: '¡Hola! Soy Florencio, tu botánico de confianza. En la demo solo sé responder a un par de ejemplos. Prueba con «Tengo este abono, ¿cómo lo uso?» o «¿Crees que necesita más luz?».',
     reminder: null, suggestions: ['Tengo un abono líquido, ¿cómo lo uso?', '¿Necesita más luz?'],
     model: 'demo', tier: 'lite', reason: 'Pregunta sencilla: modelo rápido',
   };
