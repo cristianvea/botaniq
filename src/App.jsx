@@ -24,7 +24,7 @@ function parseHash() {
 }
 
 // Profundidad de cada pantalla, para animar hacia delante o hacia atrás
-const DEPTH = { home: 0, plants: 0, ask: 0, settings: 0, join: 0, plant: 1, new: 2, edit: 2, checkin: 2 };
+const DEPTH = { home: 0, plants: 0, ask: 0, settings: 0, join: 0, plant: 1, chat: 1, new: 2, edit: 2, checkin: 2 };
 const depthOf = (r) => (r.name === 'ask' && r.id ? 1 : DEPTH[r.name] ?? 0);
 
 const ACTIVE_KEY = 'botaniq.household';
@@ -181,6 +181,8 @@ export default function App() {
     page = <CheckinPage key={route.id} {...ctx} plantId={route.id} />;
   } else if (route.name === 'ask') {
     page = <AskPage key={route.id || 'all'} {...ctx} plantId={route.id || null} />; tab = 'ask';
+  } else if (route.name === 'chat') {
+    page = <AskPage key={`chat-${route.id}`} {...ctx} threadId={route.id} />; tab = 'ask';
   } else if (route.name === 'settings') {
     page = <SettingsPage {...ctx} />; tab = 'settings';
   } else if (route.name === 'plants') {

@@ -166,13 +166,19 @@ export async function deleteReminder(id) {
 export async function listChat(hid) {
   const { data, error } = await supabase.from('chat_messages').select('*').eq('household_id', hid).order('created_at');
   if (error) return []; // sin la migración: la conversación no se guarda, pero funciona
-  return data.slice(-60);
+  return data.slice(-400);
 }
 
 export async function addChat(msg) {
   const { data, error } = await supabase.from('chat_messages').insert(msg).select().single();
   if (error) return { ...msg, id: crypto.randomUUID(), created_at: new Date().toISOString() };
   return data;
+}
+
+export async function deleteThread(hid, threadId) {
+  const q = supabase.from('chat_messages').delete().eq('household_id', hid);
+  const { error } = await (threadId === 'antigua' ? q.is('thread_id', null) : q.eq('thread_id', threadId));
+  if (error) throw error;
 }
 
 export async function clearChat(hid) {

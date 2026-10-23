@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as chat from '../lib/chatStore.js';
+import { threadsOf } from '../lib/chatStore.js';
+import { go } from '../lib/nav.js';
 import * as db from '../lib/data.js';
-import { askAssistant, buildContext, TIER_LABEL } from '../lib/assistant.js';
+import { buildContext, TIER_LABEL } from '../lib/assistant.js';
 import { cadenceText } from '../lib/reminders.js';
 import { resizeImage } from '../lib/image.js';
 import Florencio from '../components/Florencio.jsx';
-import { NavBar, Icon, Avatar, Spinner } from '../components/ui.jsx';
+import { NavBar, BackButton, Section, Cell, Icon, Avatar, Spinner } from '../components/ui.jsx';
 
 // photo: abre la cámara y manda la pregunta con la foto
 const EXAMPLES = [
@@ -15,28 +18,45 @@ const EXAMPLES = [
   { text: '¿Cuándo debería trasplantarla?' },
 ];
 
+const fmtWhen = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d) / 86400000);
+  if (days < 1 && new Date().getDate() === d.getDate()) return `Hoy, ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+  if (days < 2) return 'Ayer';
+  if (days < 7) return d.toLocaleDateString('es-ES', { weekday: 'long' });
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+};
+const short = (t, n = 60) => (t.length > n ? `${t.slice(0, n - 1).trim()}…` : t);
+
+// Florencio: portada con saludo + conversaciones guardadas (#/ask), o una conversación (#/chat/:id)
 export default function AskPage(ctx) {
-  const { household, plants, photos, user, notify, reload, plantId } = ctx;
+  const { household, plants, photos, user, notify, reload, plantId, threadId } = ctx;
+  const [all, setAll] = useState(null); // todos los mensajes de la casa
+  const [live, setLive] = useState(() => chat.getPending()); // pregunta en curso (sigue aunque salgas)
   const [focus, setFocus] = useState(plantId || (plants.length === 1 ? plants[0].id : null));
-  const [messages, setMessages] = useState(null);
   const [text, setText] = useState('');
   const [image, setImage] = useState(null); // { blob, url }
-  const [busy, setBusy] = useState(false);
-  const [live, setLive] = useState(null); // respuesta que se está escribiendo
-  const abortRef = useRef(null);
   const endRef = useRef(null);
-  const inputRef = useRef(null);
   const fileRef = useRef(null);
 
-  useEffect(() => { db.listChat(household.id).then(setMessages); }, [household.id]);
-  // Que se vea la planta elegida en la fila de chips
-  useEffect(() => {
-    document.querySelector('.ask-focus .chip.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-  }, [focus]);
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: messages?.length > 1 ? 'smooth' : 'auto', block: 'end' }); }, [messages, busy]);
+  useEffect(() => { db.listChat(household.id).then(setAll); }, [household.id]);
+  useEffect(() => chat.subscribe((ev) => {
+    if (ev.t === 'live') setLive({ threadId: ev.threadId, text: ev.text, tier: ev.tier });
+    if (ev.t === 'idle') setLive(null);
+    if (ev.t === 'done' || ev.t === 'error') setAll((a) => [...(a || []), ev.msg]);
+  }), []);
 
+  const threads = useMemo(() => threadsOf(all || []), [all]);
+  const thread = threadId ? threads.find((t) => t.id === threadId) : null;
+  const messages = thread?.messages || [];
+  const busy = Boolean(threadId && live?.threadId === threadId);
+  const threadPlant = thread ? plants.find((p) => p.id === thread.plantId) : null;
   const focusPlant = plants.find((p) => p.id === focus);
-  // La planta desde la que vienes, primera
+
+  useEffect(() => { if (threadId) endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [threadId, messages.length, busy, live?.text?.length]);
+  // Que se vea la planta elegida en la fila de chips
+  useEffect(() => { document.querySelector('.ask-focus .chip.on')?.scrollIntoView({ inline: 'center', block: 'nearest' }); }, [focus]);
   const [firstId] = useState(focus);
   const chipOrder = [...plants].sort((a, b) => (b.id === firstId) - (a.id === firstId));
 
@@ -60,57 +80,26 @@ export default function AskPage(ctx) {
     setText('');
     const img = imgOverride || image;
     setImage(null);
+    const continuing = threadId && threadId !== 'antigua';
+    const tid = continuing ? threadId : crypto.randomUUID();
+    const pid = continuing ? thread?.plantId ?? null : focus;
     const userMsg = await db.addChat({
-      household_id: household.id, user_id: user.id, plant_id: focus, role: 'user', content: q,
+      household_id: household.id, user_id: user.id, plant_id: pid, thread_id: tid, role: 'user', content: q,
       meta: img ? { photo: true } : null,
     });
     if (img) userMsg.localUrl = img.url; // miniatura solo en esta sesión (la foto no se guarda)
-    const history = [...(messages || []), userMsg];
-    setMessages(history);
-    setBusy(true);
-    setLive({ text: '', tier: null });
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    const timer = setTimeout(() => ctrl.abort('timeout'), 90_000);
-    try {
-      const res = await askAssistant({
-        messages: history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
-        context: buildContext(ctx, focus),
-        image: img?.blob,
-        signal: ctrl.signal,
-        onEvent: (ev) => {
-          if (ev.t === 'meta') setLive((l) => ({ ...l, tier: ev.tier }));
-          if (ev.t === 'delta') setLive((l) => ({ ...l, text: l.text + ev.text }));
-        },
-      });
-      const known = new Set(plants.map((p) => p.id));
-      const reminder = res.reminder && { ...res.reminder, plant_ids: res.reminder.plant_ids.filter((id) => known.has(id)) };
-      const botMsg = await db.addChat({
-        household_id: household.id, user_id: user.id, plant_id: focus, role: 'assistant', content: res.answer,
-        meta: { model: res.model, tier: res.tier, reason: res.reason, suggestions: res.suggestions, reminder: reminder?.plant_ids.length ? reminder : null },
-      });
-      setMessages((m) => [...m, botMsg]);
-    } catch (e) {
-      const aborted = e.name === 'AbortError' || ctrl.signal.aborted;
-      const text = !aborted ? e.message
-        : ctrl.signal.reason === 'timeout' ? 'Florencio está tardando demasiado. Vuelve a preguntar en un momento.'
-        : ctrl.signal.reason === 'cleared' ? null : 'Pregunta detenida.';
-      if (text) setMessages((m) => [...(m || []), { id: `err-${Date.now()}`, role: 'assistant', content: text, meta: { error: !aborted, stopped: aborted } }]);
-    } finally {
-      clearTimeout(timer);
-      if (abortRef.current === ctrl) abortRef.current = null;
-      setBusy(false);
-      setLive(null);
-    }
+    setAll((a) => [...(a || []), userMsg]);
+    chat.ask({
+      household, user, plants, threadId: tid, plantId: pid,
+      history: [...(continuing ? messages : []), userMsg].filter((m) => !m.meta?.error && !m.meta?.stopped),
+      context: buildContext(ctx, pid), image: img?.blob,
+    });
+    if (!continuing) go(`#/chat/${tid}`);
   };
-
-  const stop = () => abortRef.current?.abort('stop');
-  // Si sales de la pantalla, se detiene la pregunta
-  useEffect(() => () => abortRef.current?.abort('cleared'), []);
 
   const setMeta = (msg, patch) => {
     const meta = { ...msg.meta, ...patch };
-    setMessages((list) => list.map((m) => (m.id === msg.id ? { ...m, meta } : m)));
+    setAll((list) => list.map((m) => (m.id === msg.id ? { ...m, meta } : m)));
     db.updateChatMeta(msg.id, meta);
   };
 
@@ -131,20 +120,102 @@ export default function AskPage(ctx) {
     }
   };
 
-  const clear = async () => {
-    if (!confirm('¿Borrar toda la conversación?')) return;
-    abortRef.current?.abort('cleared');
-    await db.clearChat(household.id);
-    setMessages([]);
+  const removeThread = async () => {
+    if (!confirm('¿Borrar esta conversación?')) return;
+    chat.stop(threadId);
+    try { await db.deleteThread(household.id, threadId); } catch (e) { notify(e.message); return; }
+    setAll((a) => a.filter((m) => (m.thread_id || 'antigua') !== threadId));
+    go('#/ask');
+    notify('Conversación borrada');
   };
 
-  const last = messages?.[messages.length - 1];
+  const composer = (
+    <div className="composer">
+      {image && (
+        <div className="composer-photo">
+          <img src={image.url} alt="Foto adjunta" />
+          <button className="icon-circle" aria-label="Quitar foto" onClick={() => { URL.revokeObjectURL(image.url); setImage(null); }}><Icon name="close" size={12} stroke={2.8} /></button>
+        </div>
+      )}
+      <div className="composer-row">
+        <button className="composer-btn" aria-label="Añadir foto" onClick={() => fileRef.current?.click()}><Icon name="camera" size={22} /></button>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
+        <textarea rows={1} value={text} placeholder={threadId ? 'Escribe a Florencio…' : 'Pregunta algo nuevo…'}
+          onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`; }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); send(); } }} />
+        {busy
+          ? <button className="composer-send stop" aria-label="Detener" onClick={() => chat.stop(threadId)}><span className="stop-square" /></button>
+          : <button className="composer-send" aria-label="Enviar" disabled={!text.trim()} onClick={() => send()}><Icon name="arrowUp" size={20} stroke={2.6} /></button>}
+      </div>
+    </div>
+  );
 
+  // ───── Una conversación ─────
+  if (threadId) {
+    const last = messages[messages.length - 1];
+    return (
+      <div className="screen with-tabs ask">
+        <NavBar left={<BackButton href="#/ask" label="Florencio" />} title={short(thread?.title || 'Conversación', 28)}
+          right={thread ? <button className="icon-circle" onClick={removeThread} aria-label="Borrar conversación"><Icon name="trash" size={18} /></button> : null} />
+        {all === null ? (
+          <div className="center c3" style={{ minHeight: 200 }}><Spinner /></div>
+        ) : !thread ? (
+          <div className="ask-empty"><p className="t-sub c2">Esta conversación ya no existe.</p></div>
+        ) : (
+          <div className="thread">
+            {threadPlant && <div className="thread-about"><Avatar url={photos[threadPlant.photo_path]} size={22} /> Sobre {threadPlant.name}</div>}
+            {messages.map((m) => (
+              <Message key={m.id} m={m} plants={plants} onAdd={() => addReminder(m)} onDismiss={() => setMeta(m, { reminderState: 'dismissed' })} />
+            ))}
+            {busy && (live?.text
+              ? <div className="msg-bot"><div className="bubble bot">{live.text.split(/\n{2,}/).map((para, i, arr) => <p key={i}>{para}{i === arr.length - 1 && <span className="caret" />}</p>)}</div></div>
+              : (
+                <div className="msg-bot flo-thinking-row" role="status">
+                  <Florencio mood="thinking" size={92} title="Florencio está pensando" />
+                  <div className="msg-model">{live?.tier === 'pro' ? 'Mirando con lupa…' : live?.tier === 'standard' ? 'Pensando…' : 'Un momento…'}</div>
+                </div>
+              ))}
+            {!busy && last?.role === 'assistant' && last.meta?.suggestions?.length > 0 && (
+              <div className="ask-suggest">
+                {last.meta.suggestions.map((sg) => <button key={sg} className="chip" onClick={() => send(sg)}>{sg}</button>)}
+              </div>
+            )}
+          </div>
+        )}
+        <div ref={endRef} />
+        {composer}
+      </div>
+    );
+  }
+
+  // ───── Portada: Florencio saluda, ejemplos y conversaciones guardadas ─────
   return (
     <div className="screen with-tabs ask">
-      <NavBar title="Florencio" large sub="Tu botánico de confianza"
-        right={messages?.length ? <button className="icon-circle" onClick={clear} aria-label="Borrar conversación"><Icon name="trash" size={18} /></button> : null} />
+      <NavBar title="Florencio" large sub="Tu botánico de confianza" />
 
+      <div className="ask-welcome">
+        <Florencio mood="idle" size={112} />
+        <div>
+          <h2 className="t-title3">¡Hola! Soy Florencio</h2>
+          <p className="t-sub c2">Pregúntame lo que quieras sobre tus plantas. Si me mandas una foto, mejor que mejor.</p>
+        </div>
+      </div>
+
+      {threads.length > 0 && (
+        <Section header="Tus conversaciones" inset="avatar">
+          {threads.map((t) => {
+            const p = plants.find((x) => x.id === t.plantId);
+            const writing = live?.threadId === t.id;
+            return (
+              <Cell key={t.id} href={`#/chat/${t.id}`} chevron
+                leading={p ? <Avatar url={photos[p.photo_path]} size={44} /> : <span className="thread-flo"><Florencio mood="head" size={44} /></span>}
+                title={short(t.title)}
+                sub={<span className={writing ? 'c-tint' : ''}>{writing ? 'Florencio está escribiendo…' : `${p ? p.name : 'Todas tus plantas'} · ${fmtWhen(t.updated)}`}</span>} />
+            );
+          })}
+        </Section>
+      )}
+      <div className="section-header ask-new-head">Nueva pregunta</div>
       {plants.length > 0 && (
         <div className="chips ask-focus" role="radiogroup" aria-label="Sobre qué planta">
           <button className={`chip ${!focus ? 'on' : ''}`} onClick={() => setFocus(null)} role="radio" aria-checked={!focus}>Todas</button>
@@ -156,65 +227,17 @@ export default function AskPage(ctx) {
         </div>
       )}
 
-      {messages === null ? (
-        <div className="center c3" style={{ minHeight: 200 }}><Spinner /></div>
-      ) : messages.length === 0 ? (
-        <div className="ask-empty">
-          <div className="ask-hero"><Florencio mood="idle" size={128} /></div>
-          <h2 className="t-title3">¡Hola! Soy Florencio</h2>
-          <p className="t-sub c2">
-            Tu botánico de confianza. {focusPlant ? `Ya conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Ya conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
-            {' '}Pregúntame lo que quieras, y si me mandas una foto de la planta o de la etiqueta de un abono, mejor que mejor.
-          </p>
-          <div className="ask-examples">
-            {EXAMPLES.map((e) => (
-              <button key={e.text} className={`ask-example ${e.photo ? 'photo' : ''}`} onClick={() => (e.photo ? askWithPhoto(e.text) : send(e.text))}>
-                {e.photo && <Icon name="camera" size={20} />}
-                <span>{e.label || e.text}{e.hint && <small>{e.hint}</small>}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="thread">
-          {messages.map((m) => (
-            <Message key={m.id} m={m} plants={plants} onAdd={() => addReminder(m)} onDismiss={() => setMeta(m, { reminderState: 'dismissed' })} />
-          ))}
-          {busy && (live?.text
-            ? <div className="msg-bot"><div className="bubble bot">{live.text.split(/\n{2,}/).map((para, i, all) => <p key={i}>{para}{i === all.length - 1 && <span className="caret" />}</p>)}</div></div>
-            : (
-              <div className="msg-bot flo-thinking-row" role="status">
-                <Florencio mood="thinking" size={92} title="Florencio está pensando" />
-                <div className="msg-model">{live?.tier === 'pro' ? 'Mirando con lupa…' : live?.tier === 'standard' ? 'Pensando…' : 'Un momento…'}</div>
-              </div>
-            ))}
-          {!busy && last?.role === 'assistant' && last.meta?.suggestions?.length > 0 && (
-            <div className="ask-suggest">
-              {last.meta.suggestions.map((s) => <button key={s} className="chip" onClick={() => send(s)}>{s}</button>)}
-            </div>
-          )}
-        </div>
-      )}
-      <div ref={endRef} />
-
-      <div className="composer">
-        {image && (
-          <div className="composer-photo">
-            <img src={image.url} alt="Foto adjunta" />
-            <button className="icon-circle" aria-label="Quitar foto" onClick={() => { URL.revokeObjectURL(image.url); setImage(null); }}><Icon name="close" size={12} stroke={2.8} /></button>
-          </div>
-        )}
-        <div className="composer-row">
-          <button className="composer-btn" aria-label="Añadir foto" onClick={() => fileRef.current?.click()}><Icon name="camera" size={22} /></button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
-          <textarea ref={inputRef} rows={1} value={text} placeholder="Pregúntale a Florencio…"
-            onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`; }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); send(); } }} />
-          {busy
-            ? <button className="composer-send stop" aria-label="Detener" onClick={stop}><span className="stop-square" /></button>
-            : <button className="composer-send" aria-label="Enviar" disabled={!text.trim()} onClick={() => send()}><Icon name="arrowUp" size={20} stroke={2.6} /></button>}
-        </div>
+      <div className="ask-examples">
+        {EXAMPLES.map((e) => (
+          <button key={e.text} className={`ask-example ${e.photo ? 'photo' : ''}`} onClick={() => (e.photo ? askWithPhoto(e.text) : send(e.text))}>
+            {e.photo && <Icon name="camera" size={20} />}
+            <span>{e.label || e.text}{e.hint && <small>{e.hint}</small>}</span>
+          </button>
+        ))}
       </div>
+
+      {all === null && <div className="center c3" style={{ minHeight: 80 }}><Spinner /></div>}
+      {composer}
     </div>
   );
 }

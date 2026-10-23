@@ -240,6 +240,8 @@ create table if not exists public.chat_messages (
   created_at   timestamptz not null default now()
 );
 create index if not exists chat_messages_user on public.chat_messages(user_id, household_id, created_at);
+alter table public.chat_messages add column if not exists thread_id uuid;
+create index if not exists chat_messages_thread on public.chat_messages(thread_id);
 
 alter table public.care_reminders enable row level security;
 alter table public.chat_messages enable row level security;

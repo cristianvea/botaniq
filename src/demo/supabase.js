@@ -44,6 +44,8 @@ const DEFAULTS = {
   plant_events: () => ({ id: uid(), at: new Date().toISOString() }),
   zones: () => ({ id: uid(), created_at: new Date().toISOString(), gets_rain: true }),
   push_subscriptions: () => ({ id: uid() }),
+  chat_messages: () => ({ id: uid(), created_at: new Date().toISOString() }),
+  care_reminders: () => ({ id: uid(), created_at: new Date().toISOString(), months: [], last_done_at: null }),
 };
 
 class Query {
@@ -51,6 +53,7 @@ class Query {
   select() { if (this.op === 'select') this.op = 'select'; this.returning = true; return this; }
   eq(c, v) { this.filters.push((r) => r[c] === v); return this; }
   gte(c, v) { this.filters.push((r) => r[c] >= v); return this; }
+  is(c, v) { this.filters.push((r) => (r[c] ?? null) === v); return this; }
   not(c, op, v) { if (op === 'is' && v === null) this.filters.push((r) => r[c] != null); return this; }
   order(c, { ascending = true } = {}) { this.sort = { c, ascending }; return this; }
   insert(row) { this.op = 'insert'; this.payload = row; return this; }
