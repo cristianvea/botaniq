@@ -1,3 +1,4 @@
+import { TabIcon } from './TabIcons.jsx';
 import { useEffect, useRef, useState } from 'react';
 import { STATUS_LABEL } from '../lib/watering.js';
 import Icon from './Icon.jsx';
@@ -59,7 +60,7 @@ export function TabBar({ active, badge }) {
       <div className="tabbar-inner">
         {tabs.map(([key, href, icon, label]) => (
           <a key={key} href={href} className={`tab ${active === key ? 'on' : ''}`} aria-current={active === key ? 'page' : undefined}>
-            <Icon name={icon} size={25} stroke={active === key ? 2.2 : 1.8} />
+            <TabIcon name={key} />
             <span>{label}</span>
             {key === 'today' && badge > 0 && <span className="badge">{badge}</span>}
           </a>

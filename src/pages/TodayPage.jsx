@@ -124,7 +124,7 @@ export default function TodayPage(ctx) {
 
       {allPlants.length === 0 && !loading && (
         <div className="empty-state">
-          <div className="glyph"><Icon name="sprout" size={44} /></div>
+          <div className="glyph emoji">🪴</div>
           <h2 className="t-title2">Tu jardín está vacío</h2>
           <p className="t-sub c2">Haz una foto a una planta y BotanIQ la identificará y te dirá cuándo regarla.</p>
           <a className="btn" href="#/new"><Icon name="camera" size={20} /> Añadir planta</a>
@@ -133,7 +133,7 @@ export default function TodayPage(ctx) {
 
       {needWater.length > 0 && (
         <Section
-          header="Regar" big inset="avatar"
+          header="💧 Regar" big inset="avatar"
           action={needWater.length > 1 && <button className="action-link" onClick={() => water(needWater)}>Regar todas</button>}
         >
           {needWater.map((p) => (
@@ -149,7 +149,7 @@ export default function TodayPage(ctx) {
 
       {toMist.length > 0 && (
         <Section
-          header="Pulverizar" big inset="avatar"
+          header="💦 Pulverizar" big inset="avatar"
           footer="El aire está seco para estas plantas. Pulveriza las hojas con agua sin cal."
           action={toMist.length > 1 && <button className="action-link" onClick={() => mistPlants(ctx, toMist)}>Todas</button>}
         >
@@ -164,7 +164,7 @@ export default function TodayPage(ctx) {
       )}
 
       {careDue.length > 0 && (
-        <Section header="Otros cuidados" big inset="avatar">
+        <Section header="🌱 Otros cuidados" big inset="avatar">
           {careDue.map((r) => {
             const p = allPlants.find((x) => x.id === r.plant_id);
             return (
@@ -179,7 +179,7 @@ export default function TodayPage(ctx) {
       )}
 
       {week.length > 0 && (
-        <Section header="Esta semana" big inset="avatar">
+        <Section header="📅 Esta semana" big inset="avatar">
           {week.map((p) => (
             <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} pill />
           ))}

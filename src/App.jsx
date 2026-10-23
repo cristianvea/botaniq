@@ -23,11 +23,16 @@ function parseHash() {
   return { name: name || 'home', id };
 }
 
+// Profundidad de cada pantalla, para animar hacia delante o hacia atrás
+const DEPTH = { home: 0, plants: 0, ask: 0, settings: 0, join: 0, plant: 1, new: 2, edit: 2, checkin: 2 };
+const depthOf = (r) => (r.name === 'ask' && r.id ? 1 : DEPTH[r.name] ?? 0);
+
 const ACTIVE_KEY = 'botaniq.household';
 
 export default function App() {
   const [session, setSession] = useState(undefined);
   const [route, setRoute] = useState(parseHash());
+  const [dir, setDir] = useState('tab');
   const [push, setPush] = useState({ on: false, hour: 9, ready: false });
   const [notifySheet, setNotifySheet] = useState(null); // { step, mode }
   const [households, setHouseholds] = useState(null);
@@ -52,7 +57,12 @@ export default function App() {
 
   useEffect(() => {
     const onHash = () => {
-      setRoute(parseHash());
+      setRoute((prev) => {
+        const next = parseHash();
+        const a = depthOf(prev), b = depthOf(next);
+        setDir(b > a ? 'push' : b < a ? 'pop' : 'tab');
+        return next;
+      });
       setToast((t) => (t && (t.action || Date.now() - t.ts < 600) ? t : null)); // los avisos viejos no siguen a la siguiente pantalla
       window.scrollTo(0, 0);
     };
@@ -181,7 +191,7 @@ export default function App() {
 
   return (
     <>
-      {page}
+      <div key={`${route.name}/${route.id || ''}`} className={`page page-${dir}`}>{page}</div>
       {tab && <TabBar active={tab} badge={dueCount} />}
       {notifySheet && (
         <NotifySheet {...notifySheet} user={user} hour={push.hour} notify={ctx.notify}

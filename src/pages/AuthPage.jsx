@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Spinner, TextField } from '../components/ui.jsx';
-import appIcon from '../../public/icon-192.png?inline';
+import appIcon from '../assets/logo.svg';
 
 const TITLES = { login: 'Inicia sesión', signup: 'Crea tu cuenta', reset: 'Recuperar contraseña' };
 
