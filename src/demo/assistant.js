@@ -5,6 +5,14 @@ export async function askAssistant({ messages, context, image }) {
   await new Promise((r) => setTimeout(r, 1200));
   const q = messages[messages.length - 1].content.toLowerCase();
   const focus = /\[id ([^\]]+)\]/.exec(context.split('La conversación es sobre:')[1] || context)?.[1];
+  if (/abono|fertiliz/.test(q) && image) {
+    return {
+      answer: 'Por la etiqueta, es un abono líquido mineral para plantas verdes, NPK 7-3-6: rico en nitrógeno, bueno para hojas. A tu planta le viene bien.\n\nEn interior usa la mitad de lo que pone: unos 2,5 ml (media tapa) por litro de agua, cada dos riegos y solo de marzo a septiembre. Ahora en otoño, mejor guardarlo hasta primavera.\n\n¿Quieres que lo añada a tus avisos de riego?',
+      reminder: { title: 'Abono líquido verde', note: '2,5 ml por litro en el agua de riego', mode: 'with_watering', every: 2, months: [3, 4, 5, 6, 7, 8, 9], plant_ids: focus ? [focus] : [] },
+      suggestions: ['¿Y si se me pasa la dosis?', '¿Vale para el cactus?'],
+      model: 'demo · gemini-flash', tier: 'standard', reason: 'Hay que mirar la foto',
+    };
+  }
   if (/abono|fertiliz/.test(q)) {
     return {
       answer: 'Buena idea, a esta época le viene bien saberlo. Con un abono líquido universal, en interior usa la mitad de la dosis de la etiqueta (normalmente unos 2–3 ml por litro) y échalo con el agua de riego cada dos riegos, de marzo a septiembre. Ahora en otoño mejor parar: la planta crece poco y el abono se acumula en la tierra.\n\n¿Quieres que lo añada a tus avisos de riego para que te acuerdes?',

@@ -629,3 +629,7 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 .water-btn.care { background: var(--tint-soft); color: var(--tint); }
 .screen.ask ~ .hud { bottom: calc(var(--bottom) + 128px); }
 .ask-glyph.florencio { font-family: ui-serif, 'New York', Georgia, serif; font-size: 32px; font-weight: 600; font-style: italic; border-radius: 50%; }
+.ask-example.photo { display: flex; align-items: center; gap: 12px; color: var(--tint); }
+.ask-example.photo span { color: var(--label); }
+.ask-example small { display: block; font-size: 13px; color: var(--label-2); margin-top: 1px; }
+.msg-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 16px; }

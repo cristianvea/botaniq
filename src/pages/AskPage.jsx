@@ -5,11 +5,12 @@ import { cadenceText } from '../lib/reminders.js';
 import { resizeImage } from '../lib/image.js';
 import { NavBar, Icon, Avatar, Spinner } from '../components/ui.jsx';
 
+// photo: abre la cámara y manda la pregunta con la foto
 const EXAMPLES = [
-  'Tengo este abono, ¿cómo lo uso?',
-  '¿Crees que necesita más luz?',
-  '¿Por qué se le ponen las hojas amarillas?',
-  '¿Cuándo debería trasplantarla?',
+  { text: 'Quiero abonarla, ¿qué abono uso?' },
+  { text: 'Tengo este abono, ¿qué tipo es y cómo lo uso?', label: 'Tengo este abono', hint: 'Hazle una foto a la etiqueta', photo: true },
+  { text: '¿Crees que necesita más luz?' },
+  { text: '¿Por qué se le ponen las hojas amarillas?' },
 ];
 
 export default function AskPage(ctx) {
@@ -35,24 +36,31 @@ export default function AskPage(ctx) {
   const [firstId] = useState(focus);
   const chipOrder = [...plants].sort((a, b) => (b.id === firstId) - (a.id === firstId));
 
+  const pendingRef = useRef(null); // pregunta que espera a la foto
   const pickImage = async (e) => {
     const f = e.target.files?.[0];
     e.target.value = '';
+    const pending = pendingRef.current;
+    pendingRef.current = null;
     if (!f) return;
-    const blob = await resizeImage(f, 1280, 0.8);
-    setImage({ blob, url: URL.createObjectURL(blob) });
+    const blob = await resizeImage(f, 1600, 0.85); // algo más de resolución para leer etiquetas
+    const img = { blob, url: URL.createObjectURL(blob) };
+    if (pending) send(pending, img);
+    else setImage(img);
   };
+  const askWithPhoto = (q) => { pendingRef.current = q; fileRef.current?.click(); };
 
-  const send = async (raw) => {
+  const send = async (raw, imgOverride) => {
     const q = (raw ?? text).trim();
     if (!q || busy) return;
     setText('');
-    const img = image;
+    const img = imgOverride || image;
     setImage(null);
     const userMsg = await db.addChat({
       household_id: household.id, user_id: user.id, plant_id: focus, role: 'user', content: q,
       meta: img ? { photo: true } : null,
     });
+    if (img) userMsg.localUrl = img.url; // miniatura solo en esta sesión (la foto no se guarda)
     const history = [...(messages || []), userMsg];
     setMessages(history);
     setBusy(true);
@@ -73,7 +81,6 @@ export default function AskPage(ctx) {
       setMessages((m) => [...m, { id: `err-${Date.now()}`, role: 'assistant', content: e.message, meta: { error: true } }]);
     } finally {
       setBusy(false);
-      if (img) URL.revokeObjectURL(img.url);
     }
   };
 
@@ -135,7 +142,12 @@ export default function AskPage(ctx) {
             {' '}Pregúntame lo que quieras, y si me mandas una foto de la planta o de la etiqueta de un abono, mejor que mejor.
           </p>
           <div className="ask-examples">
-            {EXAMPLES.map((e) => <button key={e} className="ask-example" onClick={() => send(e)}>{e}</button>)}
+            {EXAMPLES.map((e) => (
+              <button key={e.text} className={`ask-example ${e.photo ? 'photo' : ''}`} onClick={() => (e.photo ? askWithPhoto(e.text) : send(e.text))}>
+                {e.photo && <Icon name="camera" size={20} />}
+                <span>{e.label || e.text}{e.hint && <small>{e.hint}</small>}</span>
+              </button>
+            ))}
           </div>
         </div>
       ) : (
@@ -180,6 +192,7 @@ function Message({ m, plants, onAdd, onDismiss }) {
     return (
       <div className="msg-user">
         {(p || meta.photo) && <div className="msg-tag">{[meta.photo && '📷 Foto', p && `Sobre ${p.name}`].filter(Boolean).join(' · ')}</div>}
+        {m.localUrl && <img className="msg-photo" src={m.localUrl} alt="Foto enviada" />}
         <div className="bubble me">{m.content}</div>
       </div>
     );
