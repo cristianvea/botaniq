@@ -11,6 +11,7 @@ import PlantPage from './pages/PlantPage.jsx';
 import EditPlantPage from './pages/EditPlantPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import CheckinPage from './pages/CheckinPage.jsx';
+import AskPage from './pages/AskPage.jsx';
 import LocationPicker from './components/LocationPicker.jsx';
 import { Hud, TabBar, NavBar, Spinner, Section } from './components/ui.jsx';
 import { go } from './lib/nav.js';
@@ -33,6 +34,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(() => localStorage.getItem(ACTIVE_KEY));
   const [plants, setPlants] = useState([]);
   const [events, setEvents] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [zones, setZones] = useState([]);
   const [weather, setWeather] = useState(null);
   const [weatherError, setWeatherError] = useState(null);
@@ -85,12 +87,14 @@ export default function App() {
     if (!household) return;
     setLoading(true);
     try {
-      const [p, e, z] = await Promise.all([
+      const [p, e, z, r] = await Promise.all([
         db.listPlants(household.id), db.listEvents(household.id), db.listZones(household.id),
+        db.listReminders(household.id).catch(() => []),
       ]);
       setPlants(p);
       setEvents(e);
       setZones(z);
+      setReminders(r);
       db.photoUrls(p.map((x) => x.photo_path)).then(setPhotos).catch(() => {});
     } catch (err) {
       setToast({ text: err.message });
@@ -132,7 +136,7 @@ export default function App() {
   const user = session.user;
   const dueCount = Object.values(statuses).filter((s) => s.status === 'due' || s.status === 'overdue').length;
   const ctx = {
-    user, household, households, plants, events, zones, weather, weatherError, statuses, photos, loading,
+    user, household, households, plants, events, zones, reminders, weather, weatherError, statuses, photos, loading,
     reload, loadHouseholds, selectHousehold, notify: (text, action) => setToast({ text, action, ts: Date.now() }),
     push, setPush,
     // Abre la hoja de avisos: { step: 'ask' | 'hour', mode: 'enable' | 'change' }
@@ -165,6 +169,8 @@ export default function App() {
     page = <EditPlantPage key={route.id || 'new'} {...ctx} plantId={route.name === 'edit' ? route.id : null} />;
   } else if (route.name === 'checkin') {
     page = <CheckinPage key={route.id} {...ctx} plantId={route.id} />;
+  } else if (route.name === 'ask') {
+    page = <AskPage key={route.id || 'all'} {...ctx} plantId={route.id || null} />; tab = 'ask';
   } else if (route.name === 'settings') {
     page = <SettingsPage {...ctx} />; tab = 'settings';
   } else if (route.name === 'plants') {

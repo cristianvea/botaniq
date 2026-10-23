@@ -165,3 +165,23 @@ test('consejos del tiempo referidos al día de riego', () => {
   // Si el calor no cae en su día de riego, no se avisa
   assert.ok(!contextTips({ ...base, location: 'outdoor' }, w, { status: 'ok', daysUntil: 0, nextDate: w.today }).some((t) => t.icon === '🌡️'));
 });
+
+import { reminderStatus, cadenceText, reminderWhen } from '../src/lib/reminders.js';
+
+test('recordatorios con el riego y por días', () => {
+  const now = new Date('2026-05-10T12:00:00Z');
+  const r = { plant_id: 'p', mode: 'with_watering', every: 2, months: [3, 4, 5, 6, 7, 8, 9], created_at: '2026-05-01T00:00:00Z', last_done_at: null };
+  // Nunca hecho → toca en el próximo riego
+  assert.equal(reminderStatus(r, [], now).due, true);
+  // Hecho ayer: el siguiente riego no, el de después sí
+  const done = { ...r, last_done_at: '2026-05-09T10:00:00Z' };
+  assert.equal(reminderStatus(done, [], now).due, false);
+  assert.equal(reminderWhen(reminderStatus(done, [], now)), 'En 2 riegos');
+  const watered = [{ plant_id: 'p', type: 'water', at: '2026-05-09T18:00:00Z' }];
+  assert.equal(reminderStatus(done, watered, now).due, true);
+  // Fuera de temporada
+  assert.equal(reminderStatus(r, [], new Date('2026-11-10T12:00:00Z')).off, true);
+  assert.equal(cadenceText(r), 'Cada 2 riegos · mar–sep');
+  const d = { plant_id: 'p', mode: 'every_days', every: 14, months: [], created_at: '2026-05-01T00:00:00Z', last_done_at: '2026-05-05T10:00:00Z' };
+  assert.equal(reminderWhen(reminderStatus(d, [], now)), 'En 9 días');
+});

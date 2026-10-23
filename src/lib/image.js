@@ -18,3 +18,12 @@ export async function resizeImage(file, maxSide = 1280, quality = 0.82) {
   canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
+
+export function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(',')[1]);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}

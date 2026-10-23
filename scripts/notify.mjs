@@ -10,6 +10,7 @@ import webpush from 'web-push';
 import { fetchWeather } from '../src/lib/weather.js';
 import { computeStatus, mistStatus } from '../src/lib/watering.js';
 import { MIST } from '../src/lib/care.js';
+import { reminderStatus } from '../src/lib/reminders.js';
 
 const {
   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
@@ -39,6 +40,8 @@ const [households, plants, events, members, subs, zones] = await Promise.all([
   all('zones'),
 ]);
 const zoneName = Object.fromEntries(zones.map((z) => [z.id, z.name]));
+// Recordatorios de cuidados (si aún no existe la tabla, seguimos sin ellos)
+const reminders = await all('care_reminders').catch((e) => { console.warn('Sin recordatorios:', e.message); return []; });
 
 const eventsByPlant = {};
 for (const e of events) (eventsByPlant[e.plant_id] ||= []).push(e);
@@ -93,8 +96,15 @@ async function messageFor(h) {
 
   const toMist = hp.filter((p) => MIST[p.profile] && mistStatus(p, eventsByPlant[p.id] || [], weather, MIST[p.profile])?.due);
 
-  console.log(`[${h.name}] ${hp.length} plantas, ${due.length} por regar: ${due.map((d) => d.p.name).join(', ')}; pulverizar: ${toMist.map((p) => p.name).join(', ')}`);
-  if (!due.length && !toMist.length) return null;
+  // Recordatorios: los de "con el riego" de las plantas que toca regar, y los de "cada N días" que tocan hoy
+  const hr = reminders.filter((r) => hp.some((p) => p.id === r.plant_id));
+  const dueIds = new Set(due.map((d) => d.p.id));
+  const name = (id) => hp.find((p) => p.id === id)?.name;
+  const withWater = hr.filter((r) => r.mode === 'with_watering' && dueIds.has(r.plant_id) && reminderStatus(r, events).due);
+  const byDays = hr.filter((r) => r.mode === 'every_days' && reminderStatus(r, events).due);
+
+  console.log(`[${h.name}] ${hp.length} plantas, ${due.length} por regar: ${due.map((d) => d.p.name).join(', ')}; pulverizar: ${toMist.map((p) => p.name).join(', ')}; cuidados: ${[...withWater, ...byDays].map((r) => r.title).join(', ')}`);
+  if (!due.length && !toMist.length && !byDays.length) return null;
 
   // Agrupado por zona: "Salón: Monstera, Potos · Terraza: Romero"
   const groups = {};
@@ -107,12 +117,14 @@ async function messageFor(h) {
     .join(' · ');
   const parts = [];
   if (due.length) parts.push(`${body}. Revisa la tierra (y haz una foto) antes de regar.`);
+  if (withWater.length) parts.push(`🌱 Con este riego: ${withWater.map((r) => `${r.title.toLowerCase()} (${name(r.plant_id)})`).join(', ')}`);
   if (toMist.length) parts.push(`💦 Pulverizar: ${toMist.map((p) => p.name).join(', ')}`);
+  if (byDays.length) parts.push(`🌱 Hoy: ${byDays.map((r) => `${r.title.toLowerCase()} (${name(r.plant_id)})`).join(', ')}`);
   const multi = households.length > 1 ? ` · ${h.name}` : '';
   return (messageCache[h.id] = JSON.stringify({
     title: (due.length
       ? `💧 Toca regar ${due.length === 1 ? '1 planta' : `${due.length} plantas`}`
-      : '💦 Toca pulverizar') + multi,
+      : toMist.length ? '💦 Toca pulverizar' : '🌱 Cuidados de hoy') + multi,
     body: parts.join('\n'),
     tag: `riego-${h.id}`,
     url: APP_URL || undefined,

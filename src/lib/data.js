@@ -128,3 +128,57 @@ export async function deleteZone(id) {
   const { error } = await supabase.from('zones').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ───────── Recordatorios de cuidados ─────────
+export async function listReminders(hid) {
+  const { data, error } = await supabase.from('care_reminders').select('*').eq('household_id', hid).order('created_at');
+  if (error) {
+    if (/care_reminders/.test(error.message)) return []; // aún sin la migración 006
+    throw error;
+  }
+  return data;
+}
+
+export async function saveReminder(r) {
+  const { id, ...rest } = r;
+  const q = id
+    ? supabase.from('care_reminders').update(rest).eq('id', id).select().single()
+    : supabase.from('care_reminders').insert(rest).select().single();
+  const { data, error } = await q;
+  if (error) {
+    if (/care_reminders/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 006_asistente.sql)');
+    throw error;
+  }
+  return data;
+}
+
+export async function updateReminder(id, patch) {
+  const { error } = await supabase.from('care_reminders').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteReminder(id) {
+  const { error } = await supabase.from('care_reminders').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ───────── Conversaciones con el asistente ─────────
+export async function listChat(hid) {
+  const { data, error } = await supabase.from('chat_messages').select('*').eq('household_id', hid).order('created_at');
+  if (error) return []; // sin la migración: la conversación no se guarda, pero funciona
+  return data.slice(-60);
+}
+
+export async function addChat(msg) {
+  const { data, error } = await supabase.from('chat_messages').insert(msg).select().single();
+  if (error) return { ...msg, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+  return data;
+}
+
+export async function clearChat(hid) {
+  await supabase.from('chat_messages').delete().eq('household_id', hid);
+}
+
+export async function updateChatMeta(id, meta) {
+  await supabase.from('chat_messages').update({ meta }).eq('id', id);
+}

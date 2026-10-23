@@ -45,8 +45,8 @@ La función usa **OpenAI** si encuentra su clave y, si no, **Gemini**. Si config
 **Desplegar la función (en ambos casos):**
 
 1. En Supabase, ve a **Edge Functions → Deploy a new function → Via editor**:
-   - Llámala exactamente `diagnose`.
-   - Borra el código de ejemplo y pega el contenido de `supabase/functions/diagnose/index.ts`.
+   - Llámala exactamente `ai` (la usan el diagnóstico por foto y el asistente «Preguntar»).
+   - Borra el código de ejemplo y pega el contenido de `supabase/functions/ai/index.ts`.
    - Pulsa **Deploy**.
 2. En **Edge Functions → Secrets**, añade los secretos:
 
@@ -56,6 +56,10 @@ La función usa **OpenAI** si encuentra su clave y, si no, **Gemini**. Si config
    | `OPENAI_MODEL` | *(opcional)* por defecto `gpt-6.1-sol`. `gpt-6-astra` es lo máximo (unas 5 veces más caro) y `gpt-6-luna` el más barato |
    | `OPENAI_REASONING` | *(opcional)* `low`, `medium` (por defecto) o `high` |
    | `GEMINI_API_KEY` | *(opcional)* clave de Gemini, como alternativa o respaldo |
+   | `GEMINI_MODEL`, `GEMINI_MODEL_LITE`, `GEMINI_MODEL_PRO` | *(opcional)* modelos de Gemini para preguntas normales, sencillas y complejas |
+   | `OPENAI_EFFORT_LITE`, `OPENAI_EFFORT_PRO` | *(opcional)* razonamiento de OpenAI para preguntas sencillas (`low`) y complejas (`high`) |
+
+El asistente elige el modelo según la pregunta: uno rápido para lo sencillo, el estándar si hay foto o hay que preparar un plan, y el más potente para problemas complejos (plagas, hojas amarillas con foto…). Si el potente no está disponible o no queda cupo, usa el estándar.
 
 Las claves nunca llegan al móvil: la app envía la foto a tu función de Supabase, que solo responde a usuarios que han iniciado sesión. Con OpenAI, las peticiones se hacen con `store: false` para que no se guarden en tu cuenta.
 
@@ -204,7 +208,7 @@ src/lib/weather.js    Open-Meteo
 src/lib/plantnet.js   identificación
 src/lib/care.js       recomendaciones de riego y pulverizado
 src/lib/diagnose.js   diagnóstico por foto (cliente)
-supabase/functions/diagnose/  Edge Function de diagnóstico (OpenAI o Gemini)
+supabase/functions/ai/        Edge Function de IA: diagnóstico y asistente (OpenAI o Gemini)
 src/pages/            pantallas
 src/sw.js             service worker (offline y notificaciones push)
 scripts/notify.mjs    aviso diario (GitHub Actions)

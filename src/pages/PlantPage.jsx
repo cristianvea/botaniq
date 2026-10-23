@@ -6,7 +6,8 @@ import { SOIL, mistStatus } from '../lib/watering.js';
 import { wateringGuide, contextTips } from '../lib/care.js';
 import { seasonalCare, fmtHours } from '../lib/season.js';
 import { OVERALL } from '../lib/diagnose.js';
-import { waterPlants, mistPlants } from '../lib/actions.js';
+import { waterPlants, mistPlants, completeReminder } from '../lib/actions.js';
+import { reminderStatus, reminderWhen, cadenceText } from '../lib/reminders.js';
 import { canAskPush, fmtHour } from '../lib/push.js';
 import {
   Section, Cell, Icon, Ring, StatusPill, Sheet, useScrolled, drynessColor, fmtRelDays, Avatar,
@@ -31,7 +32,8 @@ const EVENT = {
 };
 
 export default function PlantPage(ctx) {
-  const { plantId, plants, zones, events, statuses, photos, weather, household, reload, notify } = ctx;
+  const { plantId, plants, zones, events, statuses, photos, weather, household, reload, notify, reminders = [] } = ctx;
+  const [openReminder, setOpenReminder] = useState(null);
   const [busy, setBusy] = useState(false);
   const [eventPhotos, setEventPhotos] = useState({});
   const [open, setOpen] = useState(null);
@@ -56,6 +58,8 @@ export default function PlantPage(ctx) {
   const tips = contextTips(plant, weather, st);
   const mist = mistStatus(plant, myEvents, weather, guide.mist);
   const lastDiag = checkins.find((e) => e.diagnosis);
+  const myReminders = reminders.filter((r) => r.plant_id === plant.id).map((r) => ({ r, st: reminderStatus(r, events) }));
+  const withThisWatering = myReminders.filter(({ r, st }) => r.mode === 'with_watering' && st.due);
   const season = seasonalCare(plant, new Date(), household.lat);
   const SEASON_ICON = { spring: ['sprout', '#34c759'], summer: ['sun', '#ff9500'], autumn: ['leaf', '#c66a2c'], winter: ['thermo', '#5ac8fa'] }[season.key];
   const history = showAll ? myEvents : myEvents.slice(0, 5);
@@ -124,6 +128,11 @@ export default function PlantPage(ctx) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <StatusPill status={st} />
           <div className="t-headline" style={{ marginTop: 8 }}>{nextText}</div>
+          {withThisWatering.length > 0 && (
+            <div className="t-foot notify-note" style={{ color: 'var(--tint)' }}><Icon name="flask" size={14} />
+              Con este riego: {withThisWatering.map(({ r }) => r.title.toLowerCase()).join(', ')}
+            </div>
+          )}
           {st && st.status !== 'due' && st.status !== 'overdue' && st.daysUntil < 60 && (ctx.push?.on ? (
             <div className="t-foot notify-note"><Icon name="bell" size={14} />
               Te avisaremos {st.daysUntil === 1 ? 'mañana' : `el ${new Date(st.nextDate + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long' })}`} a las {fmtHour(ctx.push.hour)}
@@ -145,6 +154,7 @@ export default function PlantPage(ctx) {
           <Icon name="dropFill" size={24} stroke={0} />Regar
         </button>
         <a className="action" href={`#/checkin/${plant.id}`}><Icon name="camera" size={24} />Revisar</a>
+        <a className="action" href={`#/ask/${plant.id}`}><Icon name="bubble" size={24} />Preguntar</a>
         {guide.mist && (
           <button className="action mist" disabled={busy} onClick={() => run(() => mistPlants(ctx, [plant]))}>
             <Icon name="mist" size={24} />Pulverizar
@@ -212,6 +222,17 @@ export default function PlantPage(ctx) {
           <span className="cell-icon" style={{ background: '#ffcc00' }}><Icon name="bulb" size={18} stroke={2.2} /></span>
           <p className="c2">{guide.tip}</p>
         </div>
+      </Section>
+
+      <Section header="Recordatorios" inset="icon"
+        footer={myReminders.length ? 'Los que van con el riego se dan por hechos al pulsar «Regar», y aparecen en el aviso de ese día.' : 'Pregunta al asistente cómo usar tu abono o qué rutina le conviene, y te lo recuerdo con el riego.'}>
+        {myReminders.map(({ r, st: rs }) => (
+          <Cell key={r.id} icon="flask" iconBg={rs.off ? '#8e8e93' : '#34c759'} title={r.title}
+            sub={[cadenceText(r), r.note].filter(Boolean).join(' · ')}
+            value={<span className={rs.due && !rs.off ? 'c-tint' : ''}>{reminderWhen(rs)}</span>} chevron
+            onClick={() => setOpenReminder(r)} />
+        ))}
+        <Cell icon="sparkles" iconBg="var(--tint)" title={<span className="c-tint">{myReminders.length ? 'Añadir otro con el asistente' : 'Añadir con el asistente'}</span>} chevron href={`#/ask/${plant.id}`} />
       </Section>
 
       <Section header="Esta época" inset="icon" footer={`Lo normal ahora: ${season.normal}.`}>
@@ -297,6 +318,24 @@ export default function PlantPage(ctx) {
         <Cell title="Eliminar planta" danger onClick={remove} />
       </Section>
 
+      {openReminder && (
+        <Sheet onClose={() => setOpenReminder(null)}>
+          <div className="content" style={{ padding: '8px 16px 12px' }}>
+            <div className="t-title3">{openReminder.title}</div>
+            <p className="t-sub c2" style={{ marginTop: 6, lineHeight: 1.4 }}>
+              {[cadenceText(openReminder), openReminder.note].filter(Boolean).join('. ')}.
+              {openReminder.last_done_at ? ` Última vez: ${new Date(openReminder.last_done_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}.` : ''}
+            </p>
+          </div>
+          <div className="content stack">
+            <button className="btn block" onClick={() => { const r = openReminder; setOpenReminder(null); completeReminder(ctx, r); }}>Marcar como hecho hoy</button>
+            <button className="btn gray block" style={{ color: 'var(--red)' }} onClick={async () => {
+              const r = openReminder; setOpenReminder(null);
+              try { await db.deleteReminder(r.id); await reload(); notify('Recordatorio eliminado'); } catch (e) { notify(e.message); }
+            }}>Eliminar recordatorio</button>
+          </div>
+        </Sheet>
+      )}
       {open && (
         <Sheet onClose={() => setOpen(null)}>
           {open.url && <img className="full" src={open.url} alt="" />}

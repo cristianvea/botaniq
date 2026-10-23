@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { waterPlants, mistPlants } from '../lib/actions.js';
+import { waterPlants, mistPlants, completeReminder, dueWithWatering } from '../lib/actions.js';
+import { reminderStatus } from '../lib/reminders.js';
 import { mistStatus } from '../lib/watering.js';
 import { wateringGuide } from '../lib/care.js';
 import { seasonInfo, fmtHours } from '../lib/season.js';
@@ -31,6 +32,10 @@ export default function TodayPage(ctx) {
     const g = wateringGuide(p).mist;
     return g && mistStatus(p, events.filter((e) => e.plant_id === p.id), weather, g)?.due;
   }) : [];
+
+  // Recordatorios por días (girar la maceta, abono granulado…) que tocan hoy
+  const careDue = (ctx.reminders || []).filter((r) => r.mode === 'every_days'
+    && plants.some((p) => p.id === r.plant_id) && reminderStatus(r, events).due);
 
   const water = async (list) => {
     setDone((d) => ({ ...d, ...Object.fromEntries(list.map((p) => [p.id, true])) }));
@@ -132,7 +137,7 @@ export default function TodayPage(ctx) {
           action={needWater.length > 1 && <button className="action-link" onClick={() => water(needWater)}>Regar todas</button>}
         >
           {needWater.map((p) => (
-            <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} how={wateringGuide(p, { weather, status: statuses[p.id], events: events.filter((e) => e.plant_id === p.id) }).short}>
+            <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} how={[dueWithWatering(ctx, p).map((r) => `🌱 ${r.title}`).join(', '), wateringGuide(p, { weather, status: statuses[p.id], events: events.filter((e) => e.plant_id === p.id) }).short].filter(Boolean).join(' · ')}>
               <a className="icon-circle" href={`#/checkin/${p.id}`} aria-label={`Revisar ${p.name}`}><Icon name="camera" size={18} /></a>
               <button className={`water-btn ${done[p.id] ? 'done' : ''}`} onClick={() => water([p])} aria-label={`Marcar ${p.name} como regada`}>
                 <Icon name={done[p.id] ? 'check' : 'dropFill'} size={20} stroke={done[p.id] ? 2.6 : 0} />
@@ -155,6 +160,21 @@ export default function TodayPage(ctx) {
               </button>
             </PlantRow>
           ))}
+        </Section>
+      )}
+
+      {careDue.length > 0 && (
+        <Section header="Otros cuidados" big inset="avatar">
+          {careDue.map((r) => {
+            const p = allPlants.find((x) => x.id === r.plant_id);
+            return (
+              <PlantRow key={r.id} plant={p} url={photos[p.photo_path]} sub={`🌱 ${r.title}`} how={r.note}>
+                <button className="water-btn care" onClick={() => completeReminder(ctx, r)} aria-label={`Marcar ${r.title} como hecho`}>
+                  <Icon name="check" size={20} stroke={2.6} />
+                </button>
+              </PlantRow>
+            );
+          })}
         </Section>
       )}
 

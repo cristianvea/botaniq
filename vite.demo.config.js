@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
-const swap = { 'supabase.js': 'supabase.js', 'plantnet.js': 'plantnet.js', 'weather.js': 'weather.js', 'diagnose.js': 'diagnose.js', 'push.js': 'push.js' };
+const swap = { 'supabase.js': 'supabase.js', 'plantnet.js': 'plantnet.js', 'weather.js': 'weather.js', 'diagnose.js': 'diagnose.js', 'push.js': 'push.js', 'assistant.js': 'assistant.js' };
 const libDir = path.resolve('src/lib');
 const demoDir = path.resolve('src/demo');
 
