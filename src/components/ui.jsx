@@ -51,7 +51,7 @@ export function TabBar({ active, badge }) {
   const tabs = [
     ['today', '#/', 'today', 'Hoy'],
     ['plants', '#/plants', 'leaf', 'Plantas'],
-    ['ask', '#/ask', 'bubble', 'Preguntar'],
+    ['ask', '#/ask', 'bubble', 'Florencio'],
     ['settings', '#/settings', 'gear', 'Ajustes'],
   ];
   return (

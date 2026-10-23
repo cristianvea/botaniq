@@ -31,6 +31,9 @@ export default function AskPage(ctx) {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: messages?.length > 1 ? 'smooth' : 'auto', block: 'end' }); }, [messages, busy]);
 
   const focusPlant = plants.find((p) => p.id === focus);
+  // La planta desde la que vienes, primera
+  const [firstId] = useState(focus);
+  const chipOrder = [...plants].sort((a, b) => (b.id === firstId) - (a.id === firstId));
 
   const pickImage = async (e) => {
     const f = e.target.files?.[0];
@@ -107,13 +110,13 @@ export default function AskPage(ctx) {
 
   return (
     <div className="screen with-tabs ask">
-      <NavBar title="Preguntar" large
+      <NavBar title="Florencio" large sub="Tu botánico de cabecera"
         right={messages?.length ? <button className="icon-circle" onClick={clear} aria-label="Borrar conversación"><Icon name="trash" size={18} /></button> : null} />
 
       {plants.length > 0 && (
         <div className="chips ask-focus" role="radiogroup" aria-label="Sobre qué planta">
           <button className={`chip ${!focus ? 'on' : ''}`} onClick={() => setFocus(null)} role="radio" aria-checked={!focus}>Todas</button>
-          {plants.map((p) => (
+          {chipOrder.map((p) => (
             <button key={p.id} className={`chip with-avatar ${focus === p.id ? 'on' : ''}`} onClick={() => setFocus(p.id)} role="radio" aria-checked={focus === p.id}>
               <Avatar url={photos[p.photo_path]} size={22} />{p.name}
             </button>
@@ -125,11 +128,11 @@ export default function AskPage(ctx) {
         <div className="center c3" style={{ minHeight: 200 }}><Spinner /></div>
       ) : messages.length === 0 ? (
         <div className="ask-empty">
-          <div className="ask-glyph"><Icon name="sparkles" size={30} /></div>
-          <h2 className="t-title3">Pregunta lo que quieras</h2>
+          <div className="ask-glyph florencio">F</div>
+          <h2 className="t-title3">¡Hola! Soy Florencio</h2>
           <p className="t-sub c2">
-            {focusPlant ? `Conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
-            {' '}Puedes mandarme una foto de la planta o de la etiqueta de un producto.
+            Tu botánico de cabecera. {focusPlant ? `Ya conozco a ${focusPlant.name}: su luz, su maceta, cuándo la regaste y el tiempo que hace.` : 'Ya conozco tus plantas, dónde están, cuándo las regaste y el tiempo que hace.'}
+            {' '}Pregúntame lo que quieras, y si me mandas una foto de la planta o de la etiqueta de un abono, mejor que mejor.
           </p>
           <div className="ask-examples">
             {EXAMPLES.map((e) => <button key={e} className="ask-example" onClick={() => send(e)}>{e}</button>)}
@@ -140,7 +143,7 @@ export default function AskPage(ctx) {
           {messages.map((m) => (
             <Message key={m.id} m={m} plants={plants} onAdd={() => addReminder(m)} onDismiss={() => setMeta(m, { reminderState: 'dismissed' })} />
           ))}
-          {busy && <div className="bubble bot typing" aria-label="Escribiendo"><span /><span /><span /></div>}
+          {busy && <div className="bubble bot typing" aria-label="Florencio está escribiendo"><span /><span /><span /></div>}
           {!busy && last?.role === 'assistant' && last.meta?.suggestions?.length > 0 && (
             <div className="ask-suggest">
               {last.meta.suggestions.map((s) => <button key={s} className="chip" onClick={() => send(s)}>{s}</button>)}
@@ -160,7 +163,7 @@ export default function AskPage(ctx) {
         <div className="composer-row">
           <button className="composer-btn" aria-label="Añadir foto" onClick={() => fileRef.current?.click()}><Icon name="camera" size={22} /></button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickImage} />
-          <textarea ref={inputRef} rows={1} value={text} placeholder={focusPlant ? `Pregunta sobre ${focusPlant.name}…` : 'Pregunta sobre tus plantas…'}
+          <textarea ref={inputRef} rows={1} value={text} placeholder="Pregúntale a Florencio…"
             onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`; }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); send(); } }} />
           <button className="composer-send" aria-label="Enviar" disabled={!text.trim() || busy} onClick={() => send()}><Icon name="arrowUp" size={20} stroke={2.6} /></button>
@@ -208,7 +211,7 @@ function Message({ m, plants, onAdd, onDismiss }) {
         </div>
       )}
       {meta.model && !meta.error && (
-        <div className="msg-model" title={meta.reason}>{TIER_LABEL[meta.tier] || ''} · {String(meta.model).replace(/^models\//, '')}</div>
+        <div className="msg-model" title={meta.reason}>Florencio · {TIER_LABEL[meta.tier] || ''} · {String(meta.model).replace(/^models\//, '')}</div>
       )}
     </div>
   );

@@ -628,3 +628,4 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 .composer-photo .icon-circle { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; background: var(--label); color: var(--bg); }
 .water-btn.care { background: var(--tint-soft); color: var(--tint); }
 .screen.ask ~ .hud { bottom: calc(var(--bottom) + 128px); }
+.ask-glyph.florencio { font-family: ui-serif, 'New York', Georgia, serif; font-size: 32px; font-weight: 600; font-style: italic; border-radius: 50%; }

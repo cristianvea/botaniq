@@ -154,7 +154,7 @@ export default function PlantPage(ctx) {
           <Icon name="dropFill" size={24} stroke={0} />Regar
         </button>
         <a className="action" href={`#/checkin/${plant.id}`}><Icon name="camera" size={24} />Revisar</a>
-        <a className="action" href={`#/ask/${plant.id}`}><Icon name="bubble" size={24} />Preguntar</a>
+        <a className="action" href={`#/ask/${plant.id}`}><Icon name="bubble" size={24} />Florencio</a>
         {guide.mist && (
           <button className="action mist" disabled={busy} onClick={() => run(() => mistPlants(ctx, [plant]))}>
             <Icon name="mist" size={24} />Pulverizar
@@ -225,14 +225,14 @@ export default function PlantPage(ctx) {
       </Section>
 
       <Section header="Recordatorios" inset="icon"
-        footer={myReminders.length ? 'Los que van con el riego se dan por hechos al pulsar «Regar», y aparecen en el aviso de ese día.' : 'Pregunta al asistente cómo usar tu abono o qué rutina le conviene, y te lo recuerdo con el riego.'}>
+        footer={myReminders.length ? 'Los que van con el riego se dan por hechos al pulsar «Regar», y aparecen en el aviso de ese día.' : 'Pregunta a Florencio, tu botánico de cabecera, cómo usar tu abono o qué rutina le conviene, y te lo recordamos con el riego.'}>
         {myReminders.map(({ r, st: rs }) => (
           <Cell key={r.id} icon="flask" iconBg={rs.off ? '#8e8e93' : '#34c759'} title={r.title}
             sub={[cadenceText(r), r.note].filter(Boolean).join(' · ')}
             value={<span className={rs.due && !rs.off ? 'c-tint' : ''}>{reminderWhen(rs)}</span>} chevron
             onClick={() => setOpenReminder(r)} />
         ))}
-        <Cell icon="sparkles" iconBg="var(--tint)" title={<span className="c-tint">{myReminders.length ? 'Añadir otro con el asistente' : 'Añadir con el asistente'}</span>} chevron href={`#/ask/${plant.id}`} />
+        <Cell icon="sparkles" iconBg="var(--tint)" title={<span className="c-tint">{myReminders.length ? 'Añadir otro con Florencio' : 'Añadir con Florencio'}</span>} chevron href={`#/ask/${plant.id}`} />
       </Section>
 
       <Section header="Esta época" inset="icon" footer={`Lo normal ahora: ${season.normal}.`}>
