@@ -73,15 +73,17 @@ export default function Florencio({ mood = 'idle', size = 96, title = 'Florencio
 
       {thinking && (
         <>
-          {/* Brazo: barbilla → rascarse la cabeza → barbilla → ¡idea! (el brazo es largo para que no se vea cortado al subir) */}
-          <g className="flo-hand">
-            <path d="M112 210L104 140c0-14-8-26-24-38" stroke="#f3e2bf" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            <g className="flo-fingers">
-              <rect className="flo-index" x="73" y="80" width="5" height="12" rx="2.5" fill="#f2bf98" />
-              <circle cx="76" cy="94" r="8" fill="#f2bf98" />
-              <path d="M70 90c2-4 6-6 9-5" stroke="#e5ab84" strokeWidth="3" strokeLinecap="round" fill="none" />
+          {/* Brazo derecho desde el hombro: brazo (manga) + antebrazo con la mano. Cada parte gira en su articulación */}
+          <g className="flo-upper">
+            <path d="M92 112h28" stroke="#ead6ab" strokeWidth="13" strokeLinecap="round" />
+            <g className="flo-fore">
+              <path d="M120 112h40" stroke="#f2bf98" strokeWidth="9" strokeLinecap="round" />
+              <circle cx="120" cy="112" r="6.5" fill="#ead6ab" />
+              <circle cx="163" cy="112" r="8" fill="#f2bf98" />
+              <path d="M161 106c3 1 5 4 5 7" stroke="#e5ab84" strokeWidth="2.6" strokeLinecap="round" fill="none" />
             </g>
           </g>
+          <circle cx="92" cy="112" r="6.5" fill="#ead6ab" />
           {/* Burbujas de pensamiento */}
           <g className="flo-thought">
             <circle className="b1" cx="101" cy="31" r="3" fill="var(--flo-bubble, #fff)" />
