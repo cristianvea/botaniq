@@ -153,54 +153,34 @@ async function callGemini(model: string, image: string, text: string) {
 
 
 // ───────────────────────── Asistente (chat) ─────────────────────────
+// Responde en streaming (NDJSON, una línea por evento) para que el texto aparezca según se escribe:
+//   {"t":"meta","tier","reason"}  {"t":"delta","text"}  {"t":"done",answer,reminder,suggestions,model}  {"t":"error","error"}
 
 type Tier = 'lite' | 'standard' | 'pro';
 
-// Elige el modelo según la pregunta: rápido y barato para lo sencillo, más potente para lo difícil
-function route(question: string, hasImage: boolean, turns: number): { tier: Tier; reason: string } {
+// Elige el modelo según la pregunta: rápido para lo sencillo, más potente solo cuando hace falta
+function route(question: string, hasImage: boolean): { tier: Tier; reason: string } {
   const q = question.toLowerCase();
-  const complex = /(plaga|bicho|cochinilla|ara[ñn]a roja|trips|pulg[oó]n|mosquit|hongo|moho|podrid|se (me )?muere|muriendo|ra[ií]z|ra[ií]ces|trasplant|esqueje|reproduc|por qu[eé]|diagn|enferm|amarill|manchas|qu[eé] le pasa|se cae|se caen|marchit)/.test(q);
-  const plan = /(abono|abonar|fertiliz|plan\b|calendario|program|rutina|recu[eé]rd|av[ií]s|recordatorio|dosis|c[oó]mo (lo |la )?uso)/.test(q);
-  if (hasImage && complex) return { tier: 'pro', reason: 'Foto y posible problema: modelo más potente' };
-  if (complex && (q.length > 160 || turns > 4)) return { tier: 'pro', reason: 'Problema complejo: modelo más potente' };
-  if (hasImage || complex || plan || q.length > 220) return { tier: 'standard', reason: hasImage ? 'Hay que mirar la foto' : plan ? 'Hay que preparar un plan' : 'Hay que razonar un poco' };
+  const problem = /(plaga|bicho|cochinilla|ara[ñn]a roja|trips|pulg[oó]n|mosquit|hongo|moho|podrid|se (me )?muere|muriendo|enferm|amarill|manchas|qu[eé] le pasa|se cae|se caen|marchit|seca|quemad)/.test(q);
+  const reason = /(trasplant|esqueje|reproduc|por qu[eé]|diagn|ra[ií]z|ra[ií]ces|abono|abonar|fertiliz|plan\b|calendario|rutina|dosis|c[oó]mo (lo |la )?uso|etiqueta)/.test(q);
+  if (hasImage && problem) return { tier: 'pro', reason: 'Foto de un posible problema: modelo más potente' };
+  if (hasImage) return { tier: 'standard', reason: 'Hay que mirar la foto' };
+  if (problem || reason || q.length > 240) return { tier: 'standard', reason: 'Hay que razonar un poco' };
   return { tier: 'lite', reason: 'Pregunta sencilla: modelo rápido' };
 }
-
-const chatSchema = {
-  type: 'OBJECT',
-  properties: {
-    answer: { type: 'STRING', description: 'Respuesta para el usuario, en español de España' },
-    reminder: {
-      type: 'OBJECT',
-      description: 'Recordatorio que propones añadir a los avisos (propose=false si no procede)',
-      properties: {
-        propose: { type: 'BOOLEAN' },
-        title: { type: 'STRING', description: 'Muy corto, p. ej. "Abono líquido"' },
-        note: { type: 'STRING', description: 'Cómo hacerlo, p. ej. "5 ml por litro en el agua de riego"' },
-        mode: { type: 'STRING', enum: ['with_watering', 'every_days'] },
-        every: { type: 'INTEGER', description: 'Cada N riegos (with_watering) o cada N días (every_days)' },
-        months: { type: 'ARRAY', items: { type: 'INTEGER' }, description: 'Meses (1-12) en los que aplica; vacío = todo el año' },
-        plant_ids: { type: 'ARRAY', items: { type: 'STRING' }, description: 'ids de las plantas del contexto' },
-      },
-      required: ['propose', 'title', 'note', 'mode', 'every', 'months', 'plant_ids'],
-    },
-    suggestions: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Hasta 3 preguntas cortas de seguimiento' },
-  },
-  required: ['answer', 'reminder', 'suggestions'],
-};
 
 function chatSystem(context: string) {
   return `Te llamas Florencio y eres el botánico de confianza del usuario dentro de BotanIQ, una app para cuidar plantas en casa (España).
 Tu carácter: un experto entrañable y amable, con la sabiduría tranquila de quien lleva toda la vida entre macetas. Tuteas, transmites cariño por las plantas y das confianza ("tranquilo, esto tiene arreglo"). Puedes usar alguna expresión cálida de vez en cuando, sin empalagar ni exagerar, y sin emojis salvo alguno muy ocasional (🌱).
 Preséntate ("Soy Florencio, tu botánico de confianza") solo si te saludan, te preguntan quién eres o es el primer mensaje de la conversación; si no, ve directo a la respuesta.
-Respondes en español de España, claro y práctico. Ve al grano: normalmente 2–6 frases o una lista corta con guiones. Sin títulos ni negritas. La calidez nunca resta precisión: las dosis, fechas y pasos, concretos.
+Respondes en español de España, claro y práctico. Ve al grano: normalmente 2–6 frases o una lista corta con guiones. Sin títulos, sin negritas ni markdown. La calidez nunca resta precisión: las dosis, fechas y pasos, concretos.
 
 Esto es lo que sabe la app (úsalo, no lo vuelvas a preguntar):
 ${context}
 
 Cómo responder:
 - Basa la respuesta en la planta concreta, su ubicación, su luz, su maceta, la época del año y el tiempo.
+- Si la pregunta es sobre "todas" pero solo tiene sentido para una planta, responde para las que apliquen y nómbralas.
 - Si preguntan por la luz, compara lo que necesita su tipo de planta con la luz que tiene registrada y con lo que se ve en la foto si la hay.
 - Si mandan una foto de un producto ("tengo este abono", "he comprado esto"):
   1. Identifícalo primero y dilo en una frase: marca si se ve, y sobre todo el TIPO. Abonos: líquido mineral (NPK), granulado o de liberación lenta, específico (cactus, orquídeas, acidófilas, verde), orgánico comercial (humus de lombriz, guano, estiércol), o casero (compost, restos de comida, posos de café, cáscaras de huevo, piel de plátano, agua de cocer). Si no es abono (insecticida, fungicida, sustrato, vitaminas…), dilo.
@@ -209,54 +189,104 @@ Cómo responder:
   4. Abono casero o restos de comida: sé claro y amable. Los restos crudos sobre la maceta no alimentan a corto plazo y en interior dan moho, mosquitas y olores; mejor compostarlos antes o usar humus de lombriz. Posos de café: poca cantidad, secos y mezclados, nunca en capa. Cáscara de huevo: aporta calcio muy despacio, molida.
 - Si dicen "tengo este abono" sin foto, pide amablemente una foto de la etiqueta (o el nombre y el NPK) antes de dar dosis.
 - Si preguntan qué abono usar, recomienda el TIPO adecuado a la planta y a la época (no marcas), y explica cómo reconocerlo en la tienda (NPK aproximado, "para plantas verdes", "para acidófilas"…).
-- No inventes dosis: si no sabes la del producto, da una pauta general prudente (mitad de la dosis de la etiqueta en interior) y pide una foto de la etiqueta.
 - En otoño e invierno, por lo general, no se abona (salvo plantas en floración o con crecimiento activo): dilo si aplica.
 - Si no sabes algo o falta información, dilo y explica cómo averiguarlo.
 
-Recordatorios:
-- Si el usuario quiere un plan o una rutina periódica (abonar, girar la maceta, limpiar hojas, tratar una plaga cada X días…), rellena "reminder" con propose=true y termina la respuesta preguntando si quiere que lo añada a sus avisos de riego. La app le mostrará los botones.
-- mode "with_watering" para lo que se hace al regar (abono líquido en el agua de riego), con every = cada cuántos riegos. mode "every_days" para lo demás, con every = cada cuántos días.
-- months: los meses en que aplica (abonado típico en España: 3–9 para interior, 3–10 exterior). Vacío si es todo el año.
-- plant_ids: solo ids que aparezcan en el contexto. Si habla de una planta concreta, esa. Si no está claro, la planta en la que está la conversación.
-- No propongas un recordatorio igual a uno que ya exista. Si no procede, propose=false y el resto con valores vacíos (every 1).
-- suggestions: hasta 3 preguntas de seguimiento útiles y cortas (máx. 6 palabras), o ninguna.`;
+Formato de salida (muy importante):
+1. Primero, la respuesta para el usuario, en texto normal.
+2. Si el usuario quiere un plan o rutina periódica (abonar, girar la maceta, limpiar hojas, tratar una plaga cada X días…), termina la respuesta preguntando si quiere que lo añada a sus avisos de riego, y después añade UNA línea aparte que empiece exactamente por @@RECORDATORIO seguida de un JSON en una sola línea:
+@@RECORDATORIO {"title":"Abono líquido","note":"5 ml por litro en el agua de riego","mode":"with_watering","every":2,"months":[3,4,5,6,7,8,9],"plant_ids":["<id>"]}
+   - mode "with_watering" para lo que se hace al regar (every = cada cuántos riegos); "every_days" para lo demás (every = cada cuántos días).
+   - months: meses en que aplica (abonado típico en España: 3–9 interior, 3–10 exterior); [] si es todo el año.
+   - plant_ids: solo ids del contexto. No repitas un recordatorio que ya exista. Si no procede, no pongas esta línea.
+3. Al final, opcionalmente, una línea que empiece por @@SUGERENCIAS con un array JSON de hasta 3 preguntas de seguimiento cortas (máx. 6 palabras):
+@@SUGERENCIAS ["¿Y en invierno?","¿Cuándo la trasplanto?"]`;
+}
+
+const DEADLINE_FIRST_TOKEN = 20_000; // si un modelo no empieza a responder en 20 s, probamos el siguiente
+
+// Nivel de razonamiento según el modelo (los 2.5 usan presupuesto; los nuevos, nivel)
+function thinkingFor(model: string, tier: Tier) {
+  if (/2\.5/.test(model)) {
+    if (/pro/.test(model)) return { thinkingBudget: 1024 };
+    return { thinkingBudget: tier === 'lite' ? 0 : 256 };
+  }
+  return { thinkingLevel: tier === 'pro' ? 'high' : tier === 'standard' ? 'low' : 'minimal' };
 }
 
 // deno-lint-ignore no-explicit-any
-async function geminiChat(models: string[], system: string, contents: any[]) {
+async function openGeminiStream(models: string[], tier: Tier, system: string, contents: any[], signal: AbortSignal) {
   let last = '';
   for (const model of models) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY! },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
-        contents,
-        generationConfig: { responseMimeType: 'application/json', responseSchema: chatSchema, temperature: 0.4 },
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const out = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || '').join('') || '';
-      return { ...JSON.parse(out), model };
+    for (const withThinking of [true, false]) {
+      const ctrl = new AbortController();
+      const onAbort = () => ctrl.abort();
+      signal.addEventListener('abort', onAbort);
+      const timer = setTimeout(() => ctrl.abort(), DEADLINE_FIRST_TOKEN);
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
+          method: 'POST',
+          signal: ctrl.signal,
+          headers: { 'content-type': 'application/json', 'x-goog-api-key': KEY! },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: system }] },
+            contents,
+            generationConfig: { temperature: 0.5, maxOutputTokens: 1200, ...(withThinking ? { thinkingConfig: thinkingFor(model, tier) } : {}) },
+          }),
+        });
+        if (res.ok && res.body) {
+          clearTimeout(timer);
+          return { model, body: res.body, cleanup: () => signal.removeEventListener('abort', onAbort) };
+        }
+        const detail = (await res.text()).slice(0, 300);
+        console.error('gemini', model, res.status, detail);
+        last = `${model} ${res.status}`;
+        // Parámetro de razonamiento no admitido → mismo modelo sin él
+        if (res.status === 400 && withThinking && /thinking/i.test(detail)) continue;
+        if (res.status === 401 || res.status === 403) throw new Error('Gemini: la clave no es válida o la API no está activada en el proyecto');
+        if (![400, 404, 429, 500, 503].includes(res.status)) throw new Error(`Gemini ${res.status}`);
+        break; // siguiente modelo
+      } catch (e) {
+        if (signal.aborted) throw new Error('cancelado');
+        if ((e as Error).name === 'AbortError') { console.error('gemini', model, 'sin respuesta en', DEADLINE_FIRST_TOKEN, 'ms'); last = `${model} tardó demasiado`; break; }
+        throw e;
+      } finally {
+        clearTimeout(timer);
+        signal.removeEventListener('abort', onAbort);
+      }
     }
-    last = `${model} ${res.status}`;
-    console.error('gemini', model, res.status, (await res.text()).slice(0, 300));
-    // Modelo no disponible, sin cupo o saturado → probamos el siguiente
-    if (![404, 429, 500, 503].includes(res.status)) break;
   }
-  throw new Error(last.endsWith('429') ? 'Has llegado al límite gratuito de Gemini por hoy. Prueba más tarde.' : `Gemini: ${last}`);
+  throw new Error(last.endsWith('429') ? 'Has llegado al límite gratuito de Gemini por hoy. Prueba más tarde.' : `No hay respuesta de Gemini (${last})`);
+}
+
+// Lee el SSE de Gemini y va devolviendo trozos de texto
+async function* geminiText(body: ReadableStream<Uint8Array>) {
+  const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += value;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim();
+      buf = buf.slice(i + 1);
+      if (!line.startsWith('data:')) continue;
+      try {
+        const j = JSON.parse(line.slice(5));
+        const t = j?.candidates?.[0]?.content?.parts?.filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || '').join('') || '';
+        if (t) yield t;
+      } catch { /* línea incompleta */ }
+    }
+  }
 }
 
 // deno-lint-ignore no-explicit-any
-async function openaiChat(effort: string, system: string, input: any[]) {
+async function openaiText(effort: string, system: string, input: any[], signal: AbortSignal) {
   const res = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
+    method: 'POST', signal,
     headers: { 'content-type': 'application/json', authorization: `Bearer ${OPENAI_KEY}` },
-    body: JSON.stringify({
-      model: OPENAI_MODEL, reasoning: { effort }, store: false, instructions: system, input,
-      text: { format: { type: 'json_schema', name: 'respuesta_asistente', strict: true, schema: strict(chatSchema) } },
-    }),
+    body: JSON.stringify({ model: OPENAI_MODEL, reasoning: { effort }, store: false, instructions: system, input }),
   });
   if (!res.ok) {
     console.error('openai', res.status, (await res.text()).slice(0, 300));
@@ -266,55 +296,117 @@ async function openaiChat(effort: string, system: string, input: any[]) {
   // deno-lint-ignore no-explicit-any
   const msg = (data.output || []).find((o: any) => o.type === 'message');
   // deno-lint-ignore no-explicit-any
-  const part = msg?.content?.find((c: any) => c.type === 'output_text');
-  if (!part) throw new Error('Respuesta vacía de OpenAI');
-  return { ...JSON.parse(part.text), model: `${data.model || OPENAI_MODEL} (${effort})` };
+  const text = msg?.content?.filter((c: any) => c.type === 'output_text').map((c: any) => c.text).join('') || '';
+  if (!text) throw new Error('Respuesta vacía de OpenAI');
+  return { text, model: `${data.model || OPENAI_MODEL} (${effort})` };
+}
+
+// Separa la respuesta de las líneas @@RECORDATORIO / @@SUGERENCIAS
+function parseOutput(full: string) {
+  let reminder = null;
+  let suggestions: string[] = [];
+  const keep: string[] = [];
+  for (const line of full.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('@@RECORDATORIO')) {
+      try {
+        const r = JSON.parse(t.slice('@@RECORDATORIO'.length).trim());
+        if (r?.title && Array.isArray(r.plant_ids) && r.plant_ids.length) {
+          reminder = {
+            title: String(r.title).slice(0, 60), note: r.note ? String(r.note).slice(0, 200) : '',
+            mode: r.mode === 'every_days' ? 'every_days' : 'with_watering',
+            every: Math.min(365, Math.max(1, Math.round(Number(r.every) || 1))),
+            months: (Array.isArray(r.months) ? r.months : []).map(Number).filter((m: number) => m >= 1 && m <= 12),
+            plant_ids: r.plant_ids.map(String),
+          };
+        }
+      } catch { /* JSON roto: sin recordatorio */ }
+    } else if (t.startsWith('@@SUGERENCIAS')) {
+      try { suggestions = JSON.parse(t.slice('@@SUGERENCIAS'.length).trim()).map(String).slice(0, 3); } catch { /* sin sugerencias */ }
+    } else if (!t.startsWith('@@')) keep.push(line);
+  }
+  return { answer: keep.join('\n').replace(/\*\*/g, '').trim(), reminder, suggestions };
 }
 
 // deno-lint-ignore no-explicit-any
-async function chat(body: any) {
+function chatStream(body: any, signal: AbortSignal): Response {
   const messages: { role: string; content: string }[] = (body.messages || []).slice(-12)
     .filter((m: { content?: string }) => m.content && typeof m.content === 'string')
     .map((m: { role: string; content: string }) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content.slice(0, 4000) }));
-  if (!messages.length || messages[messages.length - 1].role !== 'user') throw new Error('Falta la pregunta');
-  const image: string | null = typeof body.image === 'string' && body.image.length < 4_000_000 ? body.image : null;
-  const question = messages[messages.length - 1].content;
-  const { tier, reason } = route(question, !!image, messages.length);
+  if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'Falta la pregunta');
+  const image: string | null = typeof body.image === 'string' && body.image.length < 6_000_000 ? body.image : null;
+  const { tier, reason } = route(messages[messages.length - 1].content, !!image);
   const system = chatSystem(String(body.context || '').slice(0, 12000));
+  const t0 = Date.now();
 
-  let out;
-  if (OPENAI_KEY) {
-    const effort = { lite: env('OPENAI_EFFORT_LITE') || 'low', standard: OPENAI_EFFORT, pro: env('OPENAI_EFFORT_PRO') || 'high' }[tier];
-    const input = messages.map((m, i) => ({
-      role: m.role,
-      content: m.role === 'user' && i === messages.length - 1 && image
-        ? [{ type: 'input_text', text: m.content }, { type: 'input_image', image_url: `data:image/jpeg;base64,${image}`, detail: 'high' }]
-        : m.content,
-    }));
-    try {
-      out = await openaiChat(effort, system, input);
-    } catch (e) {
-      if (!KEY) throw e;
-      console.error('OpenAI falló, pruebo con Gemini:', (e as Error).message);
-    }
-  }
-  if (!out) {
-    const models = tier === 'lite' ? [...LITE, ...FLASH] : tier === 'pro' ? [...PRO, ...FLASH] : FLASH;
-    const contents = messages.map((m, i) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: m.role === 'user' && i === messages.length - 1 && image
-        ? [{ inline_data: { mime_type: 'image/jpeg', data: image } }, { text: m.content }]
-        : [{ text: m.content }],
-    }));
-    out = await geminiChat(models, system, contents);
-  }
-  const r = out.reminder;
-  return {
-    answer: out.answer,
-    reminder: r?.propose && r.plant_ids?.length ? { title: r.title, note: r.note, mode: r.mode, every: Math.max(1, r.every || 1), months: r.months || [], plant_ids: r.plant_ids } : null,
-    suggestions: (out.suggestions || []).slice(0, 3),
-    model: out.model, tier, reason,
-  };
+  const stream = new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+      const send = (o: unknown) => { try { controller.enqueue(enc.encode(JSON.stringify(o) + '\n')); } catch { /* cliente desconectado */ } };
+      send({ t: 'meta', tier, reason });
+      try {
+        let full = '';
+        let model = '';
+        if (OPENAI_KEY) {
+          const effort = { lite: env('OPENAI_EFFORT_LITE') || 'low', standard: OPENAI_EFFORT, pro: env('OPENAI_EFFORT_PRO') || 'high' }[tier];
+          const input = messages.map((m, i) => ({
+            role: m.role,
+            content: m.role === 'user' && i === messages.length - 1 && image
+              ? [{ type: 'input_text', text: m.content }, { type: 'input_image', image_url: `data:image/jpeg;base64,${image}`, detail: 'high' }]
+              : m.content,
+          }));
+          try {
+            const r = await openaiText(effort, system, input, signal);
+            full = r.text; model = r.model;
+            send({ t: 'delta', text: parseOutput(full).answer });
+          } catch (e) {
+            if (!KEY) throw e;
+            console.error('OpenAI falló, pruebo con Gemini:', (e as Error).message);
+          }
+        }
+        if (!full) {
+          const models = tier === 'lite' ? [...LITE, ...FLASH] : tier === 'pro' ? [...PRO, ...FLASH] : [...FLASH, ...LITE];
+          const contents = messages.map((m, i) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: m.role === 'user' && i === messages.length - 1 && image
+              ? [{ inline_data: { mime_type: 'image/jpeg', data: image } }, { text: m.content }]
+              : [{ text: m.content }],
+          }));
+          const g = await openGeminiStream(models, tier, system, contents, signal);
+          model = g.model;
+          send({ t: 'model', model });
+          let shown = 0;
+          for await (const chunk of geminiText(g.body)) {
+            full += chunk;
+            // Solo mandamos el texto visible (lo anterior a las líneas @@)
+            const cut = full.indexOf('@@');
+            const visible = cut >= 0 ? full.slice(0, cut) : full.slice(0, Math.max(0, full.length - 2));
+            if (visible.length > shown) { send({ t: 'delta', text: visible.slice(shown) }); shown = visible.length; }
+          }
+          g.cleanup();
+        }
+        const out = parseOutput(full);
+        console.log(`chat ${tier} ${model} ${Date.now() - t0} ms`);
+        send({ t: 'done', ...out, model, tier, reason });
+      } catch (e) {
+        console.error('chat', (e as Error).message);
+        send({ t: 'error', error: (e as Error).message });
+      } finally {
+        try { controller.close(); } catch { /* ya cerrado */ }
+      }
+    },
+  });
+  return new Response(stream, { headers: { ...cors, 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-cache' } });
+}
+
+// Comprueba que quien llama ha iniciado sesión (funciona con "Verify JWT" activado o desactivado)
+async function checkUser(req: Request) {
+  const auth = req.headers.get('authorization') || '';
+  const apikey = req.headers.get('apikey') || env('SUPABASE_ANON_KEY') || '';
+  const url = env('SUPABASE_URL');
+  if (!url || !auth.startsWith('Bearer ')) throw new HttpError(401, 'Inicia sesión para usar la IA');
+  const res = await fetch(`${url}/auth/v1/user`, { headers: { authorization: auth, apikey } });
+  if (!res.ok) throw new HttpError(401, 'Tu sesión ha caducado: cierra sesión y vuelve a entrar');
 }
 
 // deno-lint-ignore no-explicit-any
@@ -367,8 +459,9 @@ Deno.serve(async (req) => {
   if (!KEY && !OPENAI_KEY) return json({ error: 'Falta el secreto GEMINI_API_KEY (u OPENAI_API_KEY) en Supabase' }, 500);
 
   try {
+    await checkUser(req);
     const body = await req.json();
-    if (body.task === 'chat') return json(await chat(body));
+    if (body.task === 'chat') return chatStream(body, req.signal);
     return json(await diagnose(body)); // por defecto, diagnóstico
   } catch (e) {
     console.error(e);

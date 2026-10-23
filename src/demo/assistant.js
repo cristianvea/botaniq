@@ -1,8 +1,12 @@
 // Asistente simulado para la demo: respuestas de ejemplo según la pregunta
 export { buildContext, TIER_LABEL } from '../lib/assistant.js';
 
-export async function askAssistant({ messages, context, image }) {
-  await new Promise((r) => setTimeout(r, 1200));
+export async function askAssistant({ messages, context, image, signal, onEvent = () => {} }) {
+  await new Promise((r, j) => {
+    const t = setTimeout(r, 1500);
+    signal?.addEventListener('abort', () => { clearTimeout(t); j(Object.assign(new Error('Pregunta detenida'), { name: 'AbortError' })); });
+  });
+  onEvent({ t: 'meta', tier: 'lite' });
   const q = messages[messages.length - 1].content.toLowerCase();
   const focus = /\[id ([^\]]+)\]/.exec(context.split('La conversación es sobre:')[1] || context)?.[1];
   if (/abono|fertiliz/.test(q) && image) {

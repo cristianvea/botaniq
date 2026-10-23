@@ -633,3 +633,7 @@ textarea.tf-input { min-height: 84px; resize: vertical; }
 .ask-example.photo span { color: var(--label); }
 .ask-example small { display: block; font-size: 13px; color: var(--label-2); margin-top: 1px; }
 .msg-photo { width: 150px; height: 150px; object-fit: cover; border-radius: 16px; }
+.composer-send.stop { background: var(--label); }
+.stop-square { width: 12px; height: 12px; border-radius: 3px; background: var(--bg); }
+.caret { display: inline-block; width: 7px; height: 1em; margin-left: 2px; vertical-align: -2px; border-radius: 2px; background: var(--tint); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }

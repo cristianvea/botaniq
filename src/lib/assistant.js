@@ -1,5 +1,5 @@
 // Asistente: pregunta a la Edge Function "ai" con el contexto de tus plantas.
-import { supabase } from './supabase.js';
+import { supabase, supabaseUrl, supabaseKey } from './supabase.js';
 import { blobToBase64 } from './image.js';
 import { PROFILES, LIGHTS, POTS, POT_MATERIALS, SUBSTRATES, substrateFor } from './profiles.js';
 import { wateringGuide } from './care.js';
@@ -62,19 +62,59 @@ export function buildContext(ctx, plantId) {
 }
 
 /**
- * Envía la conversación. messages: [{role:'user'|'assistant', content}]
- * Devuelve { answer, reminder|null, suggestions[], model, tier, reason }
+ * Envía la conversación y va recibiendo la respuesta según se escribe.
+ * messages: [{role:'user'|'assistant', content}]
+ * onEvent({t:'meta'|'model'|'delta', ...}) para ir pintando; devuelve { answer, reminder|null, suggestions[], model, tier, reason }
+ * signal: AbortSignal para detener la pregunta.
  */
-export async function askAssistant({ messages, context, image }) {
+export async function askAssistant({ messages, context, image, signal, onEvent = () => {} }) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Inicia sesión de nuevo para hablar con Florencio.');
   const body = { task: 'chat', messages, context, image: image ? await blobToBase64(image) : undefined };
-  const { data, error } = await supabase.functions.invoke('ai', { body });
-  if (error) {
-    let msg = error.message;
-    try { msg = (await error.context.json()).error || msg; } catch { /* sin cuerpo */ }
-    if (/not found|404|Failed to send/i.test(msg)) msg = 'El asistente no está activado todavía: falta desplegar la función "ai" en Supabase.';
-    throw new Error(msg);
+
+  let res;
+  try {
+    res = await fetch(`${supabaseUrl}/functions/v1/ai`, {
+      method: 'POST', signal,
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${session.access_token}`, apikey: supabaseKey },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw new Error('No hay conexión con Florencio. Revisa internet y vuelve a probar.');
   }
-  return data;
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let msg = '';
+    try { const j = JSON.parse(text); msg = j.error || j.message || j.msg || ''; } catch { msg = text.slice(0, 160); }
+    if (res.status === 404) msg = 'Florencio no está activado todavía: falta desplegar la función "ai" en Supabase.';
+    else if (res.status === 401) msg = `No se ha podido comprobar tu sesión (${msg || '401'}). Si sigue pasando, desactiva «Verify JWT» en la función "ai" de Supabase.`;
+    else if (res.status === 504 || res.status === 546) msg = `Florencio ha tardado demasiado (${res.status}). Vuelve a probar.`;
+    throw new Error(msg ? `${msg}` : `Error ${res.status} de la función "ai"`);
+  }
+
+  // Respuesta en streaming: una línea JSON por evento
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = '';
+  let done = null;
+  while (true) {
+    const { value, done: end } = await reader.read();
+    if (end) break;
+    buf += value;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i);
+      buf = buf.slice(i + 1);
+      if (!line.trim()) continue;
+      let ev;
+      try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.t === 'error') throw new Error(ev.error === 'cancelado' ? 'Pregunta cancelada' : ev.error);
+      if (ev.t === 'done') done = ev;
+      else onEvent(ev);
+    }
+  }
+  if (!done) throw new Error('La respuesta se ha cortado. Vuelve a probar.');
+  return done;
 }
 
 export const TIER_LABEL = { lite: 'Rápido', standard: 'Estándar', pro: 'Avanzado' };

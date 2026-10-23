@@ -163,3 +163,5 @@ export const supabase = {
 
   functions: { async invoke() { return { data: null, error: new Error('No disponible en la demo') }; } },
 };
+export const supabaseUrl = 'demo';
+export const supabaseKey = 'demo';

@@ -21,6 +21,8 @@ export default function AskPage(ctx) {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null); // { blob, url }
   const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState(null); // respuesta que se está escribiendo
+  const abortRef = useRef(null);
   const endRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
@@ -65,11 +67,20 @@ export default function AskPage(ctx) {
     const history = [...(messages || []), userMsg];
     setMessages(history);
     setBusy(true);
+    setLive({ text: '', tier: null });
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    const timer = setTimeout(() => ctrl.abort('timeout'), 90_000);
     try {
       const res = await askAssistant({
         messages: history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
         context: buildContext(ctx, focus),
         image: img?.blob,
+        signal: ctrl.signal,
+        onEvent: (ev) => {
+          if (ev.t === 'meta') setLive((l) => ({ ...l, tier: ev.tier }));
+          if (ev.t === 'delta') setLive((l) => ({ ...l, text: l.text + ev.text }));
+        },
       });
       const known = new Set(plants.map((p) => p.id));
       const reminder = res.reminder && { ...res.reminder, plant_ids: res.reminder.plant_ids.filter((id) => known.has(id)) };
@@ -79,11 +90,22 @@ export default function AskPage(ctx) {
       });
       setMessages((m) => [...m, botMsg]);
     } catch (e) {
-      setMessages((m) => [...m, { id: `err-${Date.now()}`, role: 'assistant', content: e.message, meta: { error: true } }]);
+      const aborted = e.name === 'AbortError' || ctrl.signal.aborted;
+      const text = !aborted ? e.message
+        : ctrl.signal.reason === 'timeout' ? 'Florencio está tardando demasiado. Vuelve a preguntar en un momento.'
+        : ctrl.signal.reason === 'cleared' ? null : 'Pregunta detenida.';
+      if (text) setMessages((m) => [...(m || []), { id: `err-${Date.now()}`, role: 'assistant', content: text, meta: { error: !aborted, stopped: aborted } }]);
     } finally {
+      clearTimeout(timer);
+      if (abortRef.current === ctrl) abortRef.current = null;
       setBusy(false);
+      setLive(null);
     }
   };
+
+  const stop = () => abortRef.current?.abort('stop');
+  // Si sales de la pantalla, se detiene la pregunta
+  useEffect(() => () => abortRef.current?.abort('cleared'), []);
 
   const setMeta = (msg, patch) => {
     const meta = { ...msg.meta, ...patch };
@@ -110,6 +132,7 @@ export default function AskPage(ctx) {
 
   const clear = async () => {
     if (!confirm('¿Borrar toda la conversación?')) return;
+    abortRef.current?.abort('cleared');
     await db.clearChat(household.id);
     setMessages([]);
   };
@@ -156,7 +179,14 @@ export default function AskPage(ctx) {
           {messages.map((m) => (
             <Message key={m.id} m={m} plants={plants} onAdd={() => addReminder(m)} onDismiss={() => setMeta(m, { reminderState: 'dismissed' })} />
           ))}
-          {busy && <div className="bubble bot typing" aria-label="Florencio está escribiendo"><span /><span /><span /></div>}
+          {busy && (live?.text
+            ? <div className="msg-bot"><div className="bubble bot">{live.text.split(/\n{2,}/).map((para, i, all) => <p key={i}>{para}{i === all.length - 1 && <span className="caret" />}</p>)}</div></div>
+            : (
+              <div className="msg-bot">
+                <div className="bubble bot typing" aria-label="Florencio está pensando"><span /><span /><span /></div>
+                <div className="msg-model">{live?.tier === 'pro' ? 'Florencio está mirando con lupa…' : live?.tier === 'standard' ? 'Florencio está pensando…' : 'Florencio está escribiendo…'}</div>
+              </div>
+            ))}
           {!busy && last?.role === 'assistant' && last.meta?.suggestions?.length > 0 && (
             <div className="ask-suggest">
               {last.meta.suggestions.map((s) => <button key={s} className="chip" onClick={() => send(s)}>{s}</button>)}
@@ -179,7 +209,9 @@ export default function AskPage(ctx) {
           <textarea ref={inputRef} rows={1} value={text} placeholder="Pregúntale a Florencio…"
             onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`; }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); send(); } }} />
-          <button className="composer-send" aria-label="Enviar" disabled={!text.trim() || busy} onClick={() => send()}><Icon name="arrowUp" size={20} stroke={2.6} /></button>
+          {busy
+            ? <button className="composer-send stop" aria-label="Detener" onClick={stop}><span className="stop-square" /></button>
+            : <button className="composer-send" aria-label="Enviar" disabled={!text.trim()} onClick={() => send()}><Icon name="arrowUp" size={20} stroke={2.6} /></button>}
         </div>
       </div>
     </div>

@@ -9,7 +9,7 @@ export async function diagnosePhoto(blob, context) {
   const { data, error } = await supabase.functions.invoke('ai', { body: { task: 'diagnose', image, context } });
   if (error) {
     let msg = error.message;
-    try { msg = (await error.context.json()).error || msg; } catch { /* sin cuerpo */ }
+    try { const j = await error.context.json(); msg = j.error || j.message || j.msg || msg; } catch { /* sin cuerpo */ }
     if (/not found|404/i.test(msg)) msg = 'La IA no está activada (falta desplegar la función "ai" en Supabase).';
     throw new Error(msg);
   }
