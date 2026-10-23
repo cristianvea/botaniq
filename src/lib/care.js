@@ -1,6 +1,6 @@
 // Recomendaciones de riego y cuidados: fijas por tipo de planta + según el tiempo y la zona.
 import { PROFILES, substrateFor } from './profiles.js';
-import { indoorClimate } from './watering.js';
+import { indoorClimate, mistEvery } from './watering.js';
 
 // Cómo regar cada tipo de planta
 export const WATERING = {
@@ -147,17 +147,133 @@ function amountText(plant, w) {
   return `${ml(a)} ml–${l(b)} L`;
 }
 
-/** Ficha de riego de la planta (lo que no depende del tiempo). */
-export function wateringGuide(plant) {
-  const w = WATERING[plant.profile] || WATERING.generica;
-  const p = PROFILES[plant.profile] || PROFILES.generica;
-  return { ...w, amountText: amountText(plant, w), mist: MIST[plant.profile] || null, tip: p.tip };
+const SOAK_MIN = { small: 5, medium: 10 };
+const NO_MIST = ['cactus', 'suculenta', 'resistente', 'aromatica_lenosa', 'geranio'];
+const BOTTOM_OK = ['floracion', 'geranio', 'suculenta', 'tropical_humeda', 'aromatica_blanda'];
+
+function lastSoil(events = []) {
+  const c = events.filter((e) => e.type === 'checkin' && e.soil).sort((a, b) => new Date(b.at) - new Date(a.at))[0];
+  const w = events.filter((e) => e.type === 'water').sort((a, b) => new Date(b.at) - new Date(a.at))[0];
+  if (!c || (w && new Date(w.at) > new Date(c.at))) return null; // la revisión es anterior al último riego
+  return c.soil;
+}
+
+/**
+ * Recomendación de riego para esta planta, hoy: técnica, por qué, cantidad, pulverizado y momento.
+ * Tiene en cuenta el tipo de planta, el tamaño y drenaje de la maceta, el sustrato, el material,
+ * lo seca que está, si está dentro o fuera y el tiempo.
+ */
+export function wateringGuide(plant, { weather = null, status = null, events = [] } = {}) {
+  const base = WATERING[plant.profile] || WATERING.generica;
+  const prof = PROFILES[plant.profile] || PROFILES.generica;
+  const size = plant.pot || 'medium';
+  const drains = plant.pot_drainage !== false;
+  const outdoor = plant.location === 'outdoor';
+  const sub = substrateFor(plant);
+  const peat = sub === 'turba' || sub === 'acida';
+  const soil = lastSoil(events);
+  const veryDry = (status?.dryness ?? 0) >= 1.15 || soil === 'dry';
+  const canSoak = drains && size !== 'large';
+  const day = weather?.days.find((d) => d.date === weather.today);
+
+  let method = base.method, short = base.short, how = base.how, kind = 'top', alt = null;
+  let amount = base.amount;
+  const why = [];
+
+  if (plant.profile === 'tillandsia') {
+    kind = 'soak';
+  } else if (plant.profile === 'orquidea') {
+    if (canSoak) {
+      kind = 'soak';
+    } else {
+      kind = 'top'; amount = 0.5;
+      method = 'Por encima, despacio';
+      short = 'Por encima sobre la corteza; escurrir bien';
+      how = 'Vierte agua sin cal despacio sobre la corteza hasta que empiece a salir por abajo y deja que escurra del todo. No mojes el centro de las hojas.';
+      why.push(drains ? 'Maceta grande: sumergirla no es práctico, así que mejor por encima.' : 'Sin agujeros no se puede sumergir: el agua se quedaría dentro y pudriría las raíces.');
+    }
+  } else if (plant.profile === 'carnivora') {
+    if (!canSoak) {
+      kind = 'top'; amount = 0.8;
+      method = 'Por encima con agua destilada';
+      short = 'Por encima, agua destilada o de lluvia';
+      how = 'Riega por encima con agua destilada, osmotizada o de lluvia hasta que el sustrato quede bien húmedo. Que nunca llegue a secarse.';
+      why.push(drains ? 'Maceta grande: la bandeja no llega a humedecer todo el sustrato.' : 'Sin agujeros, la bandeja no sirve: el agua no puede subir.');
+    } else kind = 'tray';
+  } else if (canSoak && (veryDry && (peat || plant.pot_material === 'terracotta' || size === 'small'))) {
+    // Rehidratar: si el sustrato está muy seco, por encima el agua resbala sin empapar
+    kind = 'soak';
+    const min = SOAK_MIN[size];
+    method = `Inmersión ${min} minutos`;
+    short = `Sumergir ${min} min y escurrir`;
+    how = `Mete la maceta en un barreño con agua${base.soft ? ' sin cal' : ''} a temperatura ambiente, sin que cubra el sustrato, durante ${min} minutos (hasta que dejen de salir burbujas). Sácala, déjala escurrir bien y no dejes agua en el plato.`;
+    why.push(soil === 'dry' ? 'En la última revisión la tierra estaba seca del todo.' : 'Lleva tiempo sin regar y el sustrato estará muy seco.');
+    if (peat) why.push('La turba seca repele el agua: por encima resbalaría por los lados sin empapar.');
+    else if (plant.pot_material === 'terracotta') why.push('El barro seco absorbe el agua antes que la tierra: sumergida se empapa todo.');
+    else why.push('En maceta pequeña la inmersión empapa todo el cepellón de forma uniforme.');
+    alt = `Si no puedes sumergirla: ${base.short.charAt(0).toLowerCase() + base.short.slice(1)}, en dos pasadas.`;
+  } else {
+    kind = /pie/i.test(base.method) ? 'base' : 'top';
+    if (size === 'large' && veryDry) {
+      method = 'Por encima, en dos o tres pasadas';
+      short = 'Despacio, en 2–3 pasadas';
+      how = `Riega despacio por toda la superficie, espera 3–4 minutos y repite. Con la tierra muy seca, si echas todo de golpe el agua se escapa por los bordes de la maceta sin empapar el centro. Para cuando empiece a salir por los agujeros${base.soft ? ' y usa agua sin cal' : ''}.`;
+      why.push('Maceta grande y tierra muy seca: sumergirla no es práctico, mejor varias pasadas lentas.');
+    } else if (size === 'large' && drains) {
+      why.push(outdoor
+        ? 'Fuera y en maceta grande: riega al pie despacio hasta que salga por los agujeros.'
+        : 'Maceta grande: sumergirla no es práctico; riega por encima repartiendo el agua por toda la superficie, no solo junto al tallo.');
+    }
+    if (canSoak && BOTTOM_OK.includes(plant.profile) && !outdoor) {
+      alt = 'También puedes regarla por abajo: 15–20 min en un plato con 2–3 cm de agua y tira lo que sobre. Así no mojas hojas ni flores.';
+    }
+  }
+
+  if (kind === 'soak' && plant.profile === 'orquidea') {
+    why.push(size === 'small' ? 'Maceta pequeña con agujeros: la inmersión es la forma ideal para la corteza.' : 'Con agujeros y tamaño manejable: la inmersión empapa bien la corteza.');
+  }
+  if (!drains && !['orquidea', 'carnivora', 'tillandsia'].includes(plant.profile)) {
+    why.push('Maceta sin agujeros: nada de inmersión ni plato, y riega poca cantidad porque el agua sobrante no tiene salida.');
+    if (kind === 'top' || kind === 'base') {
+      method = 'Por encima, poca cantidad';
+      short = 'Poca agua, solo humedecer';
+      how = `Riega despacio por encima, solo hasta humedecer el sustrato, sin que llegue a acumularse agua en el fondo. ${base.soft ? 'Usa agua sin cal. ' : ''}Antes del siguiente riego, comprueba con el dedo que la tierra se ha secado.`;
+    }
+  }
+
+  // Pulverizar
+  const mistCfg = MIST[plant.profile] || null;
+  let mistAdvice = null;
+  if (NO_MIST.includes(plant.profile)) {
+    mistAdvice = { title: 'No la pulverices', sub: 'El agua en las hojas favorece la podredumbre en este tipo de planta.' };
+  } else if (mistCfg && day) {
+    const rh = outdoor ? day.rh ?? 60 : indoorClimate(day).rh;
+    const every = mistEvery(mistCfg, rh);
+    mistAdvice = every
+      ? { title: every === 1 ? 'Pulverizar una vez al día' : `Pulverizar cada ${every} días`, sub: `Humedad del aire ~${Math.round(rh)} %${every === 1 ? ', muy seca para ella' : ''}. Por la mañana, con agua sin cal, para que las hojas se sequen antes de la noche.`, every }
+      : { title: 'Ahora no hace falta pulverizar', sub: `Humedad del aire ~${Math.round(rh)} %: suficiente.` };
+  } else if (plant.profile === 'floracion') {
+    mistAdvice = { title: 'No pulverices las flores', sub: 'Se manchan y aparecen hongos. Si el aire está seco, mejor un plato con piedras y agua debajo.' };
+  }
+
+  // Cuándo
+  let when = 'Por la mañana, con agua a temperatura ambiente.';
+  if (outdoor && day) {
+    if (day.tmax >= 25) when = 'Temprano por la mañana o al atardecer, nunca a pleno sol.';
+    else if ((day.tmean ?? 15) < 10) when = 'A media mañana, cuando ya ha subido la temperatura; nunca al anochecer si hay riesgo de helada.';
+  }
+
+  const soakWater = { ...base, amount: kind === 'soak' || kind === 'tray' ? null : amount };
+  return {
+    ...base, method, short, how: how.replace(/\s+/g, ' ').trim(), kind, alt, why,
+    amountText: amountText(plant, soakWater), mist: mistCfg, mistAdvice, when,
+    water: base.soft ? 'Sin cal: de lluvia, filtrada o reposada 24 h.' : null, tip: prof.tip,
+  };
 }
 
 /** Consejos según el tiempo de hoy y los próximos días. Devuelve [{icon, text}] */
 export function contextTips(plant, weather) {
   const tips = [];
-  const w = WATERING[plant.profile] || WATERING.generica;
   const mist = MIST[plant.profile];
   const sub = substrateFor(plant);
   const day = weather?.days.find((d) => d.date === weather.today);
@@ -165,9 +281,8 @@ export function contextTips(plant, weather) {
   const outdoor = plant.location === 'outdoor';
 
   if (plant.pot_drainage === false) {
-    tips.push({ icon: '⚠️', text: 'Maceta sin agujeros: riega poca cantidad, nunca «hasta que escurra», y vigila que no quede agua en el fondo. Si puedes, pásala a una maceta con drenaje.' });
+    tips.push({ icon: '⚠️', text: 'Si puedes, pásala a una maceta con agujeros: es la causa más común de raíces podridas.' });
   }
-  if (w.soft) tips.push({ icon: '🚰', text: 'Usa agua sin cal: de lluvia, filtrada o reposada 24 h.' });
 
   if (day) {
     if (outdoor) {
@@ -180,7 +295,7 @@ export function contextTips(plant, weather) {
     } else {
       const { rh } = indoorClimate(day);
       if (mist && rh < mist.belowRh) {
-        tips.push({ icon: '💦', text: `El aire de casa estará sobre el ${Math.round(rh)} %: pulveriza las hojas cada ${mist.everyDays} días (con agua sin cal) o pon la maceta sobre un plato con piedras y agua.` });
+        tips.push({ icon: '💦', text: `El aire de casa estará sobre el ${Math.round(rh)} %: además de pulverizar, ayuda poner la maceta sobre un plato con piedras y agua (sin que la toque).` });
       }
       if ((day.tmean ?? 20) < 12) {
         tips.push({ icon: '🔥', text: 'Con la calefacción encendida, aléjala de radiadores y corrientes de aire caliente.' });
@@ -191,6 +306,10 @@ export function contextTips(plant, weather) {
     }
   }
   if (plant.pot_material === 'terracotta') tips.push({ icon: '🏺', text: 'El barro transpira: se seca antes, sobre todo en verano.' });
-  if (sub === 'turba' || sub === 'acida') tips.push({ icon: '🧽', text: 'Si la turba se seca del todo repele el agua: rehidrátala por inmersión unos minutos.' });
+  if (sub === 'turba' || sub === 'acida') {
+    tips.push({ icon: '🧽', text: plant.pot === 'large' || plant.pot_drainage === false
+      ? 'Si la turba se seca del todo repele el agua: rehidrátala regando despacio en varias pasadas.'
+      : 'Si la turba se seca del todo repele el agua: rehidrátala por inmersión unos minutos.' });
+  }
   return tips;
 }

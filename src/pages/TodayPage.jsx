@@ -132,7 +132,7 @@ export default function TodayPage(ctx) {
           action={needWater.length > 1 && <button className="action-link" onClick={() => water(needWater)}>Regar todas</button>}
         >
           {needWater.map((p) => (
-            <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} how={wateringGuide(p).short}>
+            <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} how={wateringGuide(p, { weather, status: statuses[p.id], events: events.filter((e) => e.plant_id === p.id) }).short}>
               <a className="icon-circle" href={`#/checkin/${p.id}`} aria-label={`Revisar ${p.name}`}><Icon name="camera" size={18} /></a>
               <button className={`water-btn ${done[p.id] ? 'done' : ''}`} onClick={() => water([p])} aria-label={`Marcar ${p.name} como regada`}>
                 <Icon name={done[p.id] ? 'check' : 'dropFill'} size={20} stroke={done[p.id] ? 2.6 : 0} />

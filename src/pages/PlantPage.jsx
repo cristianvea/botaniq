@@ -52,7 +52,7 @@ export default function PlantPage(ctx) {
   const st = statuses[plant.id];
   const zone = zones.find((z) => z.id === plant.zone_id);
   const prof = PROFILES[plant.profile] || PROFILES.generica;
-  const guide = wateringGuide(plant);
+  const guide = wateringGuide(plant, { weather, status: st, events: myEvents });
   const tips = contextTips(plant, weather);
   const mist = mistStatus(plant, myEvents, weather, guide.mist);
   const lastDiag = checkins.find((e) => e.diagnosis);
@@ -158,21 +158,36 @@ export default function PlantPage(ctx) {
         </Section>
       )}
 
-      <Section header="Cómo regarla" inset="icon"
+      <Section header="Recomendaciones de riego" inset="icon"
         footer={['due', 'overdue', 'soon'].includes(st?.status) ? 'Antes de regar, pulsa «Revisar»: con una foto y el estado de la tierra, BotanIQ afina sus cálculos.' : null}>
         <div className="care-line">
-          <span className="cell-icon" style={{ background: 'var(--water)' }}><Icon name="drop" size={18} stroke={2.2} /></span>
+          <span className="cell-icon" style={{ background: 'var(--water)' }}><Icon name={guide.kind === 'soak' || guide.kind === 'tray' ? 'dropFill' : 'drop'} size={18} stroke={2.2} /></span>
           <div>
             <div className="t-headline">{guide.method}</div>
             <p className="c2" style={{ marginTop: 2 }}>{guide.how}</p>
+            {guide.why.length > 0 && (
+              <ul className="why-list">
+                {guide.why.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            )}
           </div>
         </div>
-        {guide.amountText && (
-          <Cell icon="pot" iconBg="#a2845e" title="Cantidad" sub="Orientativa, según la maceta" value={guide.amountText} />
+        {guide.alt && (
+          <div className="care-line">
+            <span className="cell-icon" style={{ background: '#8e8e93' }}><Icon name="drop" size={18} stroke={2.2} /></span>
+            <p className="c2">{guide.alt}</p>
+          </div>
         )}
-        {guide.mist && mist && (
-          <Cell icon="mist" iconBg="#30b0c7" title={`Pulverizar cada ${guide.mist.everyDays} días`}
-            sub={mist.needed ? (mist.due ? 'Hoy toca' : `Última vez hace ${mist.since} días`) : `Ahora no hace falta · humedad ~${Math.round(mist.rh)} %`} />
+        {guide.amountText && (
+          <Cell icon="pot" iconBg="#a2845e" title="Cantidad" sub={plant.pot_drainage === false ? 'Reducida: la maceta no tiene agujeros' : 'Orientativa, según la maceta'} value={guide.amountText} />
+        )}
+        {guide.water && <Cell icon="drop" iconBg="#5ac8fa" title="Agua" sub={guide.water} />}
+        <Cell icon="clock" iconBg="#ff9500" title="Cuándo" sub={guide.when} />
+        {guide.mistAdvice && (
+          <Cell icon="mist" iconBg={guide.mistAdvice.every ? '#30b0c7' : '#8e8e93'} title={guide.mistAdvice.title}
+            sub={guide.mistAdvice.every && mist?.needed
+              ? `${mist.due ? 'Hoy toca. ' : mist.since !== Infinity ? `Última vez hace ${mist.since} ${mist.since === 1 ? 'día' : 'días'}. ` : ''}${guide.mistAdvice.sub}`
+              : guide.mistAdvice.sub} />
         )}
         <div className="care-line">
           <span className="cell-icon" style={{ background: '#ffcc00' }}><Icon name="bulb" size={18} stroke={2.2} /></span>

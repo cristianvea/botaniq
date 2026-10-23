@@ -200,12 +200,21 @@ export function learnFromSoil(adjust, predicted, soil) {
 }
 
 /** ¿Toca pulverizar? Solo plantas que lo agradecen y cuando el aire está seco. */
+/** Cada cuántos días pulverizar según la humedad (null = no hace falta) */
+export function mistEvery(mist, rh) {
+  if (!mist || rh >= mist.belowRh) return null;
+  if (rh < mist.belowRh - 15) return 1;
+  if (rh < mist.belowRh - 7) return Math.max(1, Math.ceil(mist.everyDays / 2));
+  return mist.everyDays;
+}
+
 export function mistStatus(plant, events, weather, mist) {
   if (!mist || !weather) return null;
   const day = weather.days.find((d) => d.date === weather.today);
   const rh = plant.location === 'outdoor' ? day?.rh ?? 60 : indoorClimate(day || {}).rh;
-  if (rh >= mist.belowRh) return { needed: false, rh };
+  const every = mistEvery(mist, rh);
+  if (!every) return { needed: false, rh };
   const last = events.filter((e) => e.type === 'mist').sort((a, b) => new Date(b.at) - new Date(a.at))[0];
   const since = last ? daysBetween(dateInTz(last.at, weather.timezone), weather.today) : Infinity;
-  return { needed: true, due: since >= mist.everyDays, every: mist.everyDays, since, rh };
+  return { needed: true, due: since >= every, every, since, rh };
 }
