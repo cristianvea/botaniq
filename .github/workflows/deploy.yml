@@ -36,7 +36,7 @@ jobs:
           VITE_PLANTNET_KEY: ${{ secrets.PLANTNET_KEY }}
           VITE_VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VITE_AUTH_PROVIDERS: ${{ vars.AUTH_PROVIDERS }}
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
