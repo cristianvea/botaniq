@@ -58,6 +58,8 @@ export function envFactor(plant, day) {
 
 /** Tasa de secado diaria de la planta (fracción de "depósito" que pierde ese día) */
 export function dailyRate(plant, day) {
+  // Frecuencia fijada por el usuario: manda sobre el cálculo
+  if (plant.fixed_days > 0) return 1 / plant.fixed_days;
   const profile = PROFILES[plant.profile] || PROFILES.generica;
   const substrate = SUBSTRATES[substrateFor(plant)]?.factor ?? 1;
   const pot = POTS[plant.pot]?.factor ?? 1;
@@ -197,8 +199,8 @@ export function learnFromSoil(adjust, predicted, soil) {
   const err = predicted - target; // >0: el modelo creía que estaba más seca de lo real
   if (soil === 'dry' && predicted >= target) return adjust || 1; // tarde, pero el modelo no se equivocaba
   if (Math.abs(err) < 0.2) return adjust || 1;
-  // Corrección suave y acotada: como mucho ±15 % por revisión
-  const factor = clamp(1 - err * 0.25, 0.85, 1.15);
+  // Corrección acotada: como mucho ±25 % por revisión, para que aprenda en pocas revisiones
+  const factor = clamp(1 - err * 0.4, 0.75, 1.25);
   return clamp((adjust || 1) * factor, 0.4, 2.5);
 }
 

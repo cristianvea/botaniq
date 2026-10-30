@@ -256,3 +256,6 @@ create policy cm_all on public.chat_messages for all
   using (user_id = auth.uid() and public.is_member(household_id))
   with check (user_id = auth.uid() and public.is_member(household_id));
 
+
+-- Frecuencia de riego fijada por el usuario (null = automática)
+alter table public.plants add column if not exists fixed_days smallint check (fixed_days between 1 and 60);

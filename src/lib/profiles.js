@@ -35,7 +35,7 @@ export const PROFILES = {
     tip: 'Riega por inmersión 10 min cuando las raíces estén plateadas; escurre bien.',
   },
   flor_interior: {
-    label: 'Flor de interior de invierno (flor de pascua, ciclamen…)', emoji: '❤️', baseDays: 4.2, defaultSubstrate: 'universal',
+    label: 'Flor de interior de invierno (flor de pascua, ciclamen…)', emoji: '❤️', baseDays: 2.4, defaultSubstrate: 'universal',
     tip: 'Riega cuando los 2 cm de arriba estén secos y vacía siempre el plato: se pudre con facilidad. Lejos de radiadores y corrientes.',
   },
   floracion: {

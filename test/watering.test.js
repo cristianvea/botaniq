@@ -81,7 +81,7 @@ test('aprendizaje desde la tierra', () => {
   assert.ok(learnFromSoil(1, 0.4, 'dry') > 1);     // creía húmeda, estaba seca → más rápido
   assert.equal(learnFromSoil(1, 0.55, 'moist'), 1); // acierto
   assert.equal(learnFromSoil(1, 1.4, 'dry'), 1);    // se regó tarde: no penaliza
-  assert.ok(learnFromSoil(1, 3, 'wet') >= 0.85);    // corrección acotada
+  assert.ok(learnFromSoil(1, 3, 'wet') >= 0.75);    // corrección acotada
 });
 
 test('pulverizar solo con aire seco y si toca', () => {
@@ -218,5 +218,7 @@ test('flor de pascua no es una crasa', () => {
   assert.equal(profileForTaxon({ species: 'Euphorbia pulcherrima Willd. ex Klotzsch', genus: 'Euphorbia', family: 'Euphorbiaceae' }), 'flor_interior');
   assert.equal(profileForTaxon({ species: 'Euphorbia milii', genus: 'Euphorbia' }), 'suculenta');
   const d = 1 / dailyRate({ profile: 'flor_interior', location: 'indoor', light: 'indirect', pot: 'medium', pot_material: 'plastic', substrate: 'unknown' }, { date: '2026-12-15', tmean: 7, rh: 75, lat: 40.4 });
-  assert.ok(d >= 5 && d <= 7.5, `pascua ${d}`);
+  assert.ok(d >= 2.5 && d <= 4.5, `pascua ${d}`);
+  // Frecuencia fijada por el usuario: manda sobre el cálculo
+  assert.equal(1 / dailyRate({ profile: "cactus", fixed_days: 2 }, { tmean: 5 }), 2);
 });

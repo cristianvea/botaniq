@@ -11,7 +11,7 @@ import TypePicker from '../components/TypePicker.jsx';
 const EMPTY = {
   name: '', species: '', genus: '', family: '', common_name: '',
   zone_id: null, profile: 'generica', location: 'indoor', light: 'indirect', substrate: 'unknown',
-  pot: 'medium', pot_material: 'plastic', pot_drainage: true, gets_rain: true, notes: '',
+  pot: 'medium', pot_material: 'plastic', pot_drainage: true, gets_rain: true, notes: '', fixed_days: null,
 };
 const LAST = [['0', 'Hoy'], ['3', 'Hace unos días'], ['7', 'Hace una semana'], ['unknown', 'No lo sé']];
 const LAST_ZONE_KEY = 'botaniq.lastZone';
@@ -149,6 +149,7 @@ export default function EditPlantPage(ctx) {
         profile: form.profile, zone_id: zone.id, location: zone.location, gets_rain: zone.gets_rain,
         light: form.light, substrate: form.substrate, pot: form.pot, pot_material: form.pot_material, pot_drainage: form.pot_drainage,
         notes: form.notes || null, photo_path,
+        ...(form.fixed_days || existing?.fixed_days ? { fixed_days: form.fixed_days ? Number(form.fixed_days) : null } : {}),
       };
       if (!existing) row.created_by = user.id;
       const saved = await db.savePlant(row);
@@ -367,6 +368,9 @@ export default function EditPlantPage(ctx) {
               style={{ fontStyle: form.species ? 'italic' : 'normal' }} onChange={(e) => set({ species: e.target.value })} />
             <SelectField label="Sustrato" value={form.substrate} onChange={(v) => set({ substrate: v })}
               options={Object.entries(SUBSTRATES).map(([k, s]) => [k, k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]])} />
+            <SelectField label="Frecuencia de riego" value={String(form.fixed_days || '')} onChange={(v) => set({ fixed_days: v ? Number(v) : null })}
+              hint="Si sabes cada cuánto la riegas y te funciona, fíjalo aquí y BotanIQ lo respetará."
+              options={[['', 'Automática (según la planta y el tiempo)'], ...[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 21, 30].map((n) => [String(n), n === 1 ? 'Cada día' : `Cada ${n} días`])]} />
             {!existing && (
               <TextField label="Fecha exacta del último riego" type="date" max={todayStr} value={lastDate}
                 onChange={(e) => { setLastDate(e.target.value); setLastWatered(e.target.value ? 'date' : 'unknown'); }} />

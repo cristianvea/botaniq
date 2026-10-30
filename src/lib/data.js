@@ -57,7 +57,10 @@ export async function savePlant(plant) {
     ? supabase.from('plants').update(rest).eq('id', id).select().single()
     : supabase.from('plants').insert(rest).select().single();
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) {
+    if (/fixed_days/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 008_frecuencia.sql)');
+    throw error;
+  }
   return data;
 }
 

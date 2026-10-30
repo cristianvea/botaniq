@@ -292,6 +292,7 @@ export default function PlantPage(ctx) {
         <Cell icon="sun" iconBg="#ff9500" title="Luz" value={LIGHTS[plant.light]?.label} />
         <Cell icon="leaf" iconBg="#a2845e" title="Sustrato" value={`${SUBSTRATES[sub]?.label.split(' (')[0].split(' / ')[0]}${plant.substrate === 'unknown' ? '*' : ''}`} />
         <Cell icon="pot" iconBg="#8e8e93" title="Maceta" value={`${POTS[plant.pot]?.label.split(' (')[0]}, ${POT_MATERIALS[plant.pot_material]?.label.split(' /')[0].toLowerCase()}${plant.pot_drainage === false ? ', sin drenaje' : ''}`} />
+        {plant.fixed_days > 0 && <Cell icon="clock" iconBg="var(--water)" title="Frecuencia" value={`Cada ${plant.fixed_days} ${plant.fixed_days === 1 ? 'día' : 'días'} (fijada)`} chevron href={`#/edit/${plant.id}`} />}
         <Cell icon="sparkles" iconBg="#af52de" title="Ajuste aprendido"
           value={adjustPct === 0 ? 'Ninguno' : adjustPct > 0 ? `Se seca un ${adjustPct} % antes` : `Se seca un ${-adjustPct} % después`}
           onClick={adjustPct !== 0 ? () => run(async () => {
