@@ -394,3 +394,7 @@ create table if not exists public.ai_usage (
 create index if not exists ai_usage_user on public.ai_usage(user_id, task, at);
 alter table public.ai_usage enable row level security; -- sin políticas: solo la función "ai" (con la clave de servicio)
 
+
+-- ───── 010_rutina.sql ─────
+alter table public.plants add column if not exists fixed_seasonal boolean not null default false;
+alter table public.plants add column if not exists fixed_month smallint check (fixed_month between 1 and 12);

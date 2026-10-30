@@ -7,14 +7,23 @@ import { PROFILES, SUBSTRATES, profileForTaxon, suggestedPlacement } from '../li
 import { NavBar, Section, Segmented, Switch, Icon, Spinner, Sheet, TextField, SelectField } from '../components/ui.jsx';
 import ZoneEditor from '../components/ZoneEditor.jsx';
 import TypePicker from '../components/TypePicker.jsx';
+import { dailyRate, routineDays, typicalDay } from '../lib/watering.js';
+import { MONTHS } from '../lib/reminders.js';
 
 const EMPTY = {
   name: '', species: '', genus: '', family: '', common_name: '',
   zone_id: null, profile: 'generica', location: 'indoor', light: 'indirect', substrate: 'unknown',
-  pot: 'medium', pot_material: 'plastic', pot_drainage: true, gets_rain: true, notes: '', fixed_days: null,
+  pot: 'medium', pot_material: 'plastic', pot_drainage: true, gets_rain: true, notes: '', fixed_days: null, fixed_seasonal: false,
 };
 const LAST = [['0', 'Hoy'], ['3', 'Hace unos días'], ['7', 'Hace una semana'], ['unknown', 'No lo sé']];
 const LAST_ZONE_KEY = 'botaniq.lastZone';
+const ROUTINE_DAYS = [1, 2, 3, 4, 5, 7, 10, 14, 30];
+// Abono de la rutina propia: [clave, texto, modo, cada]
+const FEED = [['none', 'No abono'], ['w1', 'En cada riego', 'with_watering', 1], ['w2', 'Cada 2 riegos', 'with_watering', 2],
+  ['w4', 'Cada 4 riegos', 'with_watering', 4], ['d30', 'Una vez al mes', 'every_days', 30]];
+const GROWING = [3, 4, 5, 6, 7, 8, 9]; // el abono, solo en la época de crecimiento
+const thisMonth = () => new Date().getMonth() + 1;
+const daysText = (n) => (n === 1 ? 'cada día' : `cada ${n} días`);
 // Ayuda para elegir el tamaño: se mide el ancho de la boca de la maceta
 const POT_HINT = {
   small: 'Menos de 12 cm de boca. Cabe en una mano, como una taza o un vaso grande.',
@@ -47,6 +56,9 @@ export default function EditPlantPage(ctx) {
   const [newLocation, setNewLocation] = useState(existing?.location || 'indoor'); // solo si aún no hay zonas
   const [newZone, setNewZone] = useState(false);
   const [more, setMore] = useState(false);
+  // ¿Riega con su propia rutina ('own') o prefiere que BotanIQ le aconseje ('auto')? null = aún sin contestar
+  const [routine, setRoutine] = useState(existing ? (existing.fixed_days > 0 ? 'own' : 'auto') : null);
+  const [feed, setFeed] = useState('none');
   const [saving, setSaving] = useState(false);
   const camRef = useRef();
   const libRef = useRef();
@@ -128,8 +140,33 @@ export default function EditPlantPage(ctx) {
     setStep('confirm');
   };
 
+  // Columnas de la rutina (solo se envían si hacen falta, por si aún no está la migración 010)
+  const routineRow = () => {
+    if (routine !== 'own') return existing?.fixed_days ? { fixed_days: null, ...(existing.fixed_seasonal ? { fixed_seasonal: false } : {}) } : {};
+    const row = { fixed_days: Number(form.fixed_days) };
+    if (form.fixed_seasonal || existing?.fixed_seasonal) {
+      row.fixed_seasonal = !!form.fixed_seasonal;
+      // Mes de referencia: cuando se pone (o se cambia) la rutina
+      const same = existing && existing.fixed_days === row.fixed_days && existing.fixed_seasonal && existing.fixed_month;
+      row.fixed_month = same ? existing.fixed_month : thisMonth();
+    }
+    return row;
+  };
+
+  // Lo que calcularía BotanIQ ahora mismo, para proponerlo como punto de partida
+  const estimateDays = () => {
+    const d = typicalDay(thisMonth(), household?.lat ?? 40);
+    const n = Math.round(1 / dailyRate({ ...form, fixed_days: null, location: zones.find((z) => z.id === form.zone_id)?.location || newLocation }, d));
+    return ROUTINE_DAYS.reduce((a, b) => (Math.abs(b - n) < Math.abs(a - n) ? b : a));
+  };
+  const chooseRoutine = (v) => {
+    setRoutine(v);
+    if (v === 'own' && !form.fixed_days) set({ fixed_days: estimateDays() });
+  };
+
   const save = async (force = false) => {
     if (!form.name.trim()) return notify('Ponle un nombre a la planta');
+    if (routine === 'own' && !(form.fixed_days > 0)) return notify('Elige cada cuánto la riegas');
     if (!force && mismatch && !mismatchOk) { setAskMismatch(true); return; }
     if (lastWatered === 'date' && !lastDate) return notify('Elige la fecha del último riego');
     setSaving(true);
@@ -151,13 +188,20 @@ export default function EditPlantPage(ctx) {
         profile: form.profile, zone_id: zone.id, location: zone.location, gets_rain: zone.gets_rain,
         light: form.light, substrate: form.substrate, pot: form.pot, pot_material: form.pot_material, pot_drainage: form.pot_drainage,
         notes: form.notes || null, photo_path,
-        ...(form.fixed_days || existing?.fixed_days ? { fixed_days: form.fixed_days ? Number(form.fixed_days) : null } : {}),
+        ...routineRow(),
       };
       if (!existing) row.created_by = user.id;
       const saved = await db.savePlant(row);
       if (!existing && lastWatered !== 'unknown') {
         const when = lastWatered === 'date' ? new Date(lastDate + 'T10:00:00') : new Date(Date.now() - Number(lastWatered) * 86400000);
         await db.addEvent(saved, 'water', user.id, when);
+      }
+      // Abono de su rutina → recordatorio junto al riego
+      const f = FEED.find((x) => x[0] === feed);
+      if (!existing && routine === 'own' && f?.[2]) {
+        try {
+          await db.saveReminder({ household_id: household.id, plant_id: saved.id, title: 'Abono', mode: f[2], every: f[3], months: GROWING });
+        } catch (ex) { notify(ex.message); }
       }
       await reload();
       go(`#/plant/${saved.id}`);
@@ -349,6 +393,60 @@ export default function EditPlantPage(ctx) {
         </div>
       )}
 
+      {/* Rutina: si ya sabe cuidarla, BotanIQ no se mete */}
+      <Section header="Rutina de riego" footer={routine === 'own'
+        ? 'BotanIQ respetará tu rutina y no la cambiará por su cuenta. Si un día quieres consejo sobre abono, trasplante o lo que sea, pregúntale a Florencio.'
+        : routine === 'auto'
+          ? 'BotanIQ calcula cada cuánto regarla según la planta, la maceta y el tiempo de tu zona, y va aprendiendo de lo que haces (si la riegas antes o le das a «Aún húmeda»).'
+          : 'Si ya sabes cómo cuidarla, ponlo y no te molestaremos con otra cosa.'}>
+        <div className="cell stacked">
+          <span className="t-foot c2 upper">¿Ya tienes una rutina de riego?</span>
+          <div className="routine-opts" role="radiogroup">
+            <button type="button" role="radio" aria-checked={routine === 'own'} className={`routine-opt ${routine === 'own' ? 'on' : ''}`} onClick={() => chooseRoutine('own')}>
+              <span className="ro-emoji">🧑‍🌾</span><b>Sí, ya la tengo</b><span className="t-foot c2">La riego cada X días</span>
+            </button>
+            <button type="button" role="radio" aria-checked={routine === 'auto'} className={`routine-opt ${routine === 'auto' ? 'on' : ''}`} onClick={() => chooseRoutine('auto')}>
+              <span className="ro-emoji">🌱</span><b>Aún no, aconséjame</b><span className="t-foot c2">BotanIQ lo calcula</span>
+            </button>
+          </div>
+        </div>
+        {routine === 'own' && (
+          <>
+            <div className="cell stacked">
+              <span className="t-foot c2 upper">La riego…</span>
+              <div className="chips wrap">
+                {ROUTINE_DAYS.map((n) => (
+                  <button type="button" key={n} className={`chip ${Number(form.fixed_days) === n ? 'on' : ''}`} onClick={() => set({ fixed_days: n })}>
+                    {n === 1 ? 'Cada día' : n === 7 ? 'Cada semana' : n === 14 ? 'Cada 2 semanas' : n === 30 ? 'Cada mes' : `Cada ${n} días`}
+                  </button>
+                ))}
+                {form.fixed_days > 0 && !ROUTINE_DAYS.includes(Number(form.fixed_days)) && <button type="button" className="chip on">{`Cada ${form.fixed_days} días`}</button>}
+              </div>
+            </div>
+            <div className="cell">
+              <div className="cell-main">
+                <div className="cell-title">Adaptarla a la estación</div>
+                <div className="cell-sub t-foot">{form.fixed_seasonal && form.fixed_days > 0
+                  ? seasonalHint({ ...form, location: zones.find((z) => z.id === form.zone_id)?.location || newLocation }, household?.lat, existing)
+                  : 'La ajusto al calor y al frío de cada estación. Desactivada, siempre igual.'}</div>
+              </div>
+              <Switch checked={!!form.fixed_seasonal} onChange={(v) => set({ fixed_seasonal: v })} label="Adaptarla a la estación" />
+            </div>
+            {!existing && (
+              <div className="cell stacked">
+                <span className="t-foot c2 upper">¿Y abono?</span>
+                <div className="chips wrap">
+                  {FEED.map(([k, l]) => (
+                    <button type="button" key={k} className={`chip ${feed === k ? 'on' : ''}`} onClick={() => setFeed(k)}>{l}</button>
+                  ))}
+                </div>
+                {feed !== 'none' && <span className="t-foot c2">Te lo recordaré con el aviso de riego, de {MONTHS[GROWING[0] - 1]} a {MONTHS[GROWING[GROWING.length - 1] - 1]}. Puedes cambiarlo en su ficha.</span>}
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+
       {/* Más opciones */}
       <Section>
         <button type="button" className="cell" onClick={() => setMore(!more)} aria-expanded={more}>
@@ -370,9 +468,6 @@ export default function EditPlantPage(ctx) {
               style={{ fontStyle: form.species ? 'italic' : 'normal' }} onChange={(e) => set({ species: e.target.value })} />
             <SelectField label="Sustrato" value={form.substrate} onChange={(v) => set({ substrate: v })}
               options={Object.entries(SUBSTRATES).map(([k, s]) => [k, k === 'unknown' ? 'Estándar / de tienda' : short(s.label).split(' / ')[0]])} />
-            <SelectField label="Frecuencia de riego" value={String(form.fixed_days || '')} onChange={(v) => set({ fixed_days: v ? Number(v) : null })}
-              hint="Si sabes cada cuánto la riegas y te funciona, fíjalo aquí y BotanIQ lo respetará."
-              options={[['', 'Automática (según la planta y el tiempo)'], ...[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 21, 30].map((n) => [String(n), n === 1 ? 'Cada día' : `Cada ${n} días`])]} />
             {!existing && (
               <TextField label="Fecha exacta del último riego" type="date" max={todayStr} value={lastDate}
                 onChange={(e) => { setLastDate(e.target.value); setLastWatered(e.target.value ? 'date' : 'unknown'); }} />
@@ -440,6 +535,17 @@ export default function EditPlantPage(ctx) {
       {inputs}
     </div>
   );
+}
+
+// "En verano, cada ~2 días; en invierno, cada ~4"
+function seasonalHint(form, lat = 40, existing) {
+  const north = (lat ?? 40) >= 0;
+  const same = existing && existing.fixed_days === Number(form.fixed_days) && existing.fixed_seasonal && existing.fixed_month;
+  const p = { ...form, fixed_days: Number(form.fixed_days), fixed_month: same ? existing.fixed_month : thisMonth() };
+  const r = (m) => Math.max(1, Math.round(routineDays(p, m, lat)));
+  const summer = r(north ? 7 : 1), winter = r(north ? 1 : 7);
+  if (summer === winter) return `Apenas cambia con la estación: ${daysText(summer)}.`;
+  return `En verano, ${daysText(summer)}; en invierno, ${daysText(winter)}${p.location === 'indoor' ? ' (con la calefacción, la tierra también se seca)' : ''}.`;
 }
 
 function defaultZone(zones) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import * as db from '../lib/data.js';
 import { go } from '../lib/nav.js';
 import { PROFILES, SUBSTRATES, LIGHTS, POTS, POT_MATERIALS, substrateFor } from '../lib/profiles.js';
-import { SOIL, mistStatus } from '../lib/watering.js';
+import { SOIL, mistStatus, routineDays } from '../lib/watering.js';
 import { wateringGuide, contextTips } from '../lib/care.js';
 import { seasonalCare, fmtHours } from '../lib/season.js';
 import { OVERALL } from '../lib/diagnose.js';
@@ -292,13 +292,13 @@ export default function PlantPage(ctx) {
         <Cell icon="sun" iconBg="#ff9500" title="Luz" value={LIGHTS[plant.light]?.label} />
         <Cell icon="leaf" iconBg="#a2845e" title="Sustrato" value={`${SUBSTRATES[sub]?.label.split(' (')[0].split(' / ')[0]}${plant.substrate === 'unknown' ? '*' : ''}`} />
         <Cell icon="pot" iconBg="#8e8e93" title="Maceta" value={`${POTS[plant.pot]?.label.split(' (')[0]}, ${POT_MATERIALS[plant.pot_material]?.label.split(' /')[0].toLowerCase()}${plant.pot_drainage === false ? ', sin drenaje' : ''}`} />
-        {plant.fixed_days > 0 && <Cell icon="clock" iconBg="var(--water)" title="Frecuencia" value={`Cada ${plant.fixed_days} ${plant.fixed_days === 1 ? 'día' : 'días'} (fijada)`} chevron href={`#/edit/${plant.id}`} />}
-        <Cell icon="sparkles" iconBg="#af52de" title="Ajuste aprendido"
+        {plant.fixed_days > 0 && <Cell icon="clock" iconBg="var(--water)" title="Tu rutina" sub={routineSub(plant, household?.lat)} value={plant.fixed_days === 1 ? 'Cada día' : `Cada ${plant.fixed_days} días`} chevron href={`#/edit/${plant.id}`} />}
+        {!(plant.fixed_days > 0) && <Cell icon="sparkles" iconBg="#af52de" title="Ajuste aprendido"
           value={adjustPct === 0 ? 'Ninguno' : adjustPct > 0 ? `Se seca un ${adjustPct} % antes` : `Se seca un ${-adjustPct} % después`}
           onClick={adjustPct !== 0 ? () => run(async () => {
             if (!confirm('¿Restablecer lo aprendido para esta planta?')) return;
             await db.savePlant({ id: plant.id, adjust: 1 }); await reload();
-          }) : undefined} />
+          }) : undefined} />}
       </Section>
       {plant.substrate === 'unknown' && <p className="section-footer" style={{ margin: '-22px 16px 28px' }}>* Sustrato supuesto: el habitual de tienda para este tipo de planta.</p>}
       {plant.notes && <Section header="Notas"><div className="cell"><p className="t-sub">{plant.notes}</p></div></Section>}
@@ -353,4 +353,11 @@ export default function PlantPage(ctx) {
       )}
     </div>
   );
+}
+
+// Adaptada a la estación: "Ahora, cada 2 días"
+function routineSub(plant, lat) {
+  if (!plant.fixed_seasonal) return null;
+  const now = Math.max(1, Math.round(routineDays(plant, new Date().getMonth() + 1, lat ?? 40)));
+  return now === plant.fixed_days ? 'Según la estación' : `Ahora, por la estación: ${now === 1 ? 'cada día' : `cada ${now} días`}`;
 }

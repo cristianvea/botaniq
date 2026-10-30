@@ -46,6 +46,7 @@ export function buildContext(ctx, plantId) {
       `- Sustrato: ${label(SUBSTRATES, substrateFor(p))}${p.substrate === 'unknown' ? ' (supuesto: el de tienda)' : ''}`,
       st ? `- Riego: sequedad estimada ${Math.round(st.dryness * 100)} %, ${st.lastWatered ? `último riego hace ${st.daysSinceWater} días` : 'sin riegos registrados'}, ${['due', 'overdue'].includes(st.status) ? 'toca regar ya' : `próximo en ${st.daysUntil} días`}` : '',
       `- Cómo la riega la app: ${g.title} (${g.detail})`,
+      p.fixed_days > 0 ? `- El usuario tiene su propia rutina: la riega cada ${p.fixed_days} días${p.fixed_seasonal ? ' (adaptada a la estación)' : ''}. Respétala; solo sugiere cambiarla si hay síntomas claros o te lo pregunta.` : '',
       lastCheck ? `- Última revisión: ${new Date(lastCheck.at).toLocaleDateString('es-ES')}, tierra ${lastCheck.soil || 'sin indicar'}${lastCheck.note ? `, nota: "${lastCheck.note}"` : ''}` : '',
       lastDiag ? `- Último diagnóstico por foto: ${lastDiag.summary}` : '',
       p.notes ? `- Notas del usuario: ${p.notes}` : '',

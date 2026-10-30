@@ -240,3 +240,21 @@ test('aprende cuando riegas antes de lo previsto', () => {
   assert.equal(learnFromEarlyWatering({ adjust: 1, fixed_days: 3 }, { lastWatered: '2026-10-01', dryness: 0.6 }), null);
   assert.equal(learnFromEarlyWatering({ adjust: 1 }, { lastWatered: null, dryness: 0.6 }), null);
 });
+
+test('rutina propia: fija o adaptada a la estación', async () => {
+  const { routineDays, seasonRatio, dailyRate } = await import('../src/lib/watering.js');
+  const fixed = { profile: 'tropical', location: 'indoor', light: 'indirect', fixed_days: 4 };
+  assert.equal(routineDays(fixed, 7), 4);
+  const seasonal = { ...fixed, fixed_seasonal: true, fixed_month: 10 };
+  assert.equal(routineDays(seasonal, 10), 4);
+  assert.ok(routineDays(seasonal, 7) < 4, 'en verano, más a menudo');
+  const out = { ...seasonal, location: 'outdoor', profile: 'generica' };
+  assert.ok(routineDays(out, 1) > 5 && routineDays(out, 7) < 3);
+  // Hemisferio sur: el verano es enero
+  assert.ok(routineDays(out, 1, -34) < 3);
+  // dailyRate usa el mes del día y la rutina
+  assert.equal(dailyRate(fixed, { date: '2026-07-10', tmean: 30 }), 1 / 4);
+  assert.ok(Math.abs(dailyRate(seasonal, { date: '2026-07-10', lat: 40 }) - seasonRatio(seasonal, 7, 10, 40) / 4) < 1e-9);
+  // Sin mes de referencia: no cambia
+  assert.equal(routineDays({ ...fixed, fixed_seasonal: true }, 7), 4);
+});

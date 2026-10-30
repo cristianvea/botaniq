@@ -69,10 +69,40 @@ function dormancy(plant, day) {
   return winter ? f : 1;
 }
 
+// Clima típico de cada mes (zona templada mediterránea, hemisferio norte). Solo se usa para
+// comparar estaciones entre sí al adaptar una rutina fija, no para el cálculo del día a día.
+const CLIMATE = {
+  tmean: [6, 8, 11, 13, 17, 23, 26, 25, 21, 15, 10, 7],
+  rh: [75, 70, 62, 60, 55, 45, 38, 40, 50, 65, 72, 77],
+  et0: [1, 1.6, 2.6, 3.4, 4.6, 5.8, 6.4, 5.6, 3.9, 2.3, 1.3, 0.9],
+};
+/** Día típico de un mes (1–12) en una latitud; en el hemisferio sur se desplaza medio año */
+export function typicalDay(month, lat = 40) {
+  const i = ((month - 1 + (lat < 0 ? 6 : 0)) % 12 + 12) % 12;
+  return { tmean: CLIMATE.tmean[i], rh: CLIMATE.rh[i], et0: CLIMATE.et0[i], lat, date: `2026-${String(month).padStart(2, '0')}-15` };
+}
+/** Cuánto bebe esta planta en un mes respecto a otro (por la estación), entre 0,4 y 2,5 */
+export function seasonRatio(plant, month, fromMonth, lat = 40) {
+  if (!month || !fromMonth || month === fromMonth) return 1;
+  const f = (m) => { const d = typicalDay(m, lat); return envFactor(plant, d) * dormancy(plant, d); };
+  return clamp(f(month) / f(fromMonth), 0.4, 2.5);
+}
+
+/** Días entre riegos de una rutina fija en un mes concreto (si se adapta a la estación) */
+export function routineDays(plant, month = new Date().getMonth() + 1, lat = 40) {
+  if (!(plant.fixed_days > 0)) return null;
+  if (!plant.fixed_seasonal) return plant.fixed_days;
+  return plant.fixed_days / seasonRatio(plant, month, plant.fixed_month, lat);
+}
+
 /** Tasa de secado diaria de la planta (fracción de "depósito" que pierde ese día) */
 export function dailyRate(plant, day) {
-  // Frecuencia fijada por el usuario: manda sobre el cálculo
-  if (plant.fixed_days > 0) return 1 / plant.fixed_days;
+  // Rutina del usuario: manda sobre el cálculo. Si la quiere adaptada a la estación,
+  // se riega más a menudo en verano y menos en invierno respecto al mes en que la puso.
+  if (plant.fixed_days > 0) {
+    if (!plant.fixed_seasonal || !day?.date) return 1 / plant.fixed_days;
+    return seasonRatio(plant, Number(day.date.slice(5, 7)), plant.fixed_month, day.lat ?? 40) / plant.fixed_days;
+  }
   const profile = PROFILES[plant.profile] || PROFILES.generica;
   const substrate = SUBSTRATES[substrateFor(plant)]?.factor ?? 1;
   const pot = POTS[plant.pot]?.factor ?? 1;

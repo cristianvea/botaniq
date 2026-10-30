@@ -68,6 +68,7 @@ export async function savePlant(plant) {
     : supabase.from('plants').insert(rest).select().single();
   const { data, error } = await q;
   if (error) {
+    if (/fixed_seasonal|fixed_month/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 010_rutina.sql)');
     if (/fixed_days/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 008_frecuencia.sql)');
     throw error;
   }

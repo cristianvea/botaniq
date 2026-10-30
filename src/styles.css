@@ -914,3 +914,17 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .btn.oauth.apple { background: #000; color: #fff; border-color: #000; box-shadow: 0 4px 0 #333; }
 .oauth-or { display: flex; align-items: center; gap: 10px; color: var(--label-3); font-size: 13px; font-weight: 800; margin: 6px 0 -4px; }
 .oauth-or::before, .oauth-or::after { content: ''; flex: 1; height: 2px; background: var(--sep); }
+
+/* Rutina de riego al dar de alta */
+.routine-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.routine-opt {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  padding: 12px; border-radius: 16px; border: 2px solid var(--sep, #e5e5e5); border-bottom-width: 4px;
+  background: var(--card); color: var(--label); font: inherit; cursor: pointer; transition: transform .12s, border-color .15s, background .15s;
+}
+.routine-opt:active { transform: translateY(2px); border-bottom-width: 2px; }
+.routine-opt .ro-emoji { font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.routine-opt b { font-weight: 800; font-size: 15px; }
+.routine-opt.on { border-color: var(--tint); background: var(--tint-soft); }
+.routine-opt.on b { color: var(--tint-d); }
+@media (prefers-color-scheme: dark) { .routine-opt.on b { color: var(--tint); } }
