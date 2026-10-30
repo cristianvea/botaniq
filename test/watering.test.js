@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeStatus, dailyRate } from '../src/lib/watering.js';
+import { profileForTaxon } from '../src/lib/profiles.js';
 
 function weather({ tmean = 20, rh = 50, et0 = 3, precip = 0, today = '2026-07-15' } = {}) {
   const days = [];
