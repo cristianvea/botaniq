@@ -17,6 +17,7 @@ import { Hud, TabBar, NavBar, Spinner, Section } from './components/ui.jsx';
 import { go } from './lib/nav.js';
 import NotifySheet from './components/NotifySheet.jsx';
 import { pushPrefs, canAskPush, alreadyAsked } from './lib/push.js';
+import { pendingCode } from './lib/share.js';
 
 function parseHash() {
   const [, name = '', id] = window.location.hash.split('/');
@@ -81,6 +82,11 @@ export default function App() {
     if (session) loadHouseholds().catch((e) => setToast({ text: e.message }));
     else setHouseholds(null);
   }, [session, loadHouseholds]);
+
+  // Llega con un enlace de invitación y ya tiene casa: le llevamos a unirse a la nueva
+  useEffect(() => {
+    if (households?.length && pendingCode() && parseHash().name !== 'join') go('#/join');
+  }, [households]);
 
   const household = useMemo(() => {
     if (!households?.length) return null;

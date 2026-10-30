@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Instala BotanIQ</title>
+  <meta name="description" content="Te avisa de cuándo regar cada planta según el tiempo de tu zona. Cómo instalarla en iPhone y Android y crear tu cuenta." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BotanIQ" />
+  <meta property="og:title" content="BotanIQ · Cuidado botánico inteligente para tu hogar" />
+  <meta property="og:description" content="Te avisa de cuándo regar cada planta según el tiempo de tu zona. Instálala en 1 minuto." />
+  <meta property="og:url" content="%SITE_URL%instalar/" />
+  <meta property="og:image" content="%SITE_URL%og-botaniq.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#2a9d8f" />
+  <link rel="manifest" href="../manifest.webmanifest" />
+  <link rel="icon" href="../favicon-tulipan.png" type="image/png" />
+  <link rel="apple-touch-icon" href="../apple-touch-icon-tulipan.png" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" />
+  <style>
+    :root { --tint: #2a9d8f; --tint-d: #1d756a; --soft: #ddf2ef; --bg: #f6f7f6; --card: #fff; --label: #253230; --c2: #66736f; --sep: #e3e8e6; }
+    @media (prefers-color-scheme: dark) { :root { --tint: #3cbfae; --tint-d: #3cbfae; --soft: #173532; --bg: #111a19; --card: #1a2423; --label: #eef4f2; --c2: #9aaba6; --sep: #2c3a33; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--label); font: 600 16px/1.45 Nunito, ui-rounded, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+    main { max-width: 560px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 16px 40px; }
+    header { text-align: center; padding: 8px 0 18px; }
+    header img { width: 84px; height: 84px; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,.12); }
+    h1 { font-size: 30px; font-weight: 900; margin: 10px 0 2px; }
+    .lead { color: var(--c2); margin: 0 auto; max-width: 360px; }
+    .card { background: var(--card); border: 2px solid var(--sep); border-bottom-width: 4px; border-radius: 20px; padding: 16px; margin: 14px 0; }
+    h2 { font-size: 20px; font-weight: 900; margin: 0 0 10px; display: flex; gap: 10px; align-items: center; }
+    h2 .n { width: 30px; height: 30px; border-radius: 50%; background: var(--tint); color: #fff; display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+    ol { margin: 0; padding-left: 22px; }
+    li { margin: 8px 0; }
+    li::marker { font-weight: 900; color: var(--tint); }
+    b { font-weight: 900; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--bg); border-radius: 14px; padding: 4px; margin-bottom: 8px; }
+    .tabs button { font: inherit; font-weight: 800; border: 0; border-radius: 11px; padding: 9px; background: transparent; color: var(--c2); cursor: pointer; }
+    .tabs button[aria-selected="true"] { background: var(--card); color: var(--label); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+    .ico { display: inline-flex; vertical-align: -5px; width: 24px; height: 24px; border-radius: 6px; background: var(--soft); color: var(--tint-d); align-items: center; justify-content: center; }
+    .ico svg { width: 16px; height: 16px; }
+    .note { color: var(--c2); font-size: 14px; margin: 10px 0 0; }
+    .btn { display: block; width: 100%; text-align: center; text-decoration: none; font: inherit; font-weight: 900; font-size: 17px; color: #fff; background: var(--tint);
+      border: 0; border-radius: 16px; padding: 14px; box-shadow: 0 4px 0 #1d756a; cursor: pointer; margin-top: 12px; }
+    .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d756a; }
+    .invite { background: var(--soft); border-color: color-mix(in srgb, var(--tint) 40%, transparent); }
+    .code { font: 800 22px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 3px; background: var(--card); border-radius: 12px; padding: 10px 12px; display: inline-block; margin: 6px 0 4px; user-select: all; }
+    .copy { font: inherit; font-weight: 800; border: 0; background: none; color: var(--tint-d); cursor: pointer; padding: 6px; }
+    .done { text-align: center; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="../icon-192-tulipan.png" alt="" />
+    <h1>BotanIQ</h1>
+    <p class="lead">Cuidado botánico inteligente para tu hogar. Te avisa de cuándo regar cada planta según el tiempo de tu zona.</p>
+  </header>
+
+  <section class="card invite" id="invite" hidden>
+    <h2>🏡 Te han invitado a una casa</h2>
+    <div>Cuando crees tu cuenta, elige <b>«Unirme con código»</b> y escribe:</div>
+    <div class="code" id="code"></div> <button class="copy" id="copy" type="button">Copiar</button>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">1</span> Instálala como app</h2>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-ios" aria-selected="true" aria-controls="ios">📱 iPhone</button>
+      <button role="tab" id="tab-android" aria-selected="false" aria-controls="android">🤖 Android</button>
+    </div>
+
+    <div id="ios" role="tabpanel">
+      <ol>
+        <li>Abre esta página en <b>Safari</b>. Si estás dentro de WhatsApp, toca <b>⋯</b> o el icono de la brújula y elige «Abrir en Safari».</li>
+        <li>Toca el botón <b>Compartir</b> <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> (en la barra de abajo o dentro del menú <b>⋯</b>).</li>
+        <li>Baja un poco y elige <b>«Añadir a pantalla de inicio»</b> <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span>.</li>
+        <li>Si aparece <b>«Abrir como app web»</b>, déjalo activado. Toca <b>Añadir</b>.</li>
+        <li>Ya tienes el tulipán 🌷 en tu pantalla de inicio. <b>Abre BotanIQ siempre desde ahí</b>: es la única forma de que te lleguen los avisos.</li>
+      </ol>
+    </div>
+
+    <div id="android" role="tabpanel" hidden>
+      <ol>
+        <li>Abre esta página en <b>Chrome</b>. Si estás dentro de WhatsApp, toca <b>⋮</b> y elige «Abrir en Chrome».</li>
+        <li id="android-auto" hidden>Toca este botón: <button class="btn" id="install" type="button">Instalar BotanIQ</button></li>
+        <li id="android-menu">Toca el menú <b>⋮</b> (arriba a la derecha) y elige <b>«Instalar aplicación»</b> o <b>«Añadir a pantalla de inicio»</b>.</li>
+        <li>Confirma con <b>Instalar</b>.</li>
+        <li>Abre BotanIQ desde su icono 🌷 en tu pantalla de inicio o en la lista de apps.</li>
+      </ol>
+    </div>
+    <p class="note" id="installed" hidden>✅ Ya la tienes instalada. Ábrela desde su icono.</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span> Crea tu cuenta</h2>
+    <ol>
+      <li>Abre BotanIQ <b>desde el icono</b>. En iPhone, si te registras en Safari, luego tendrías que volver a entrar en la app.</li>
+      <li>Toca <b>«Regístrate»</b>, escribe tu correo y una contraseña (mínimo 8 caracteres) y toca <b>Crear cuenta</b>.</li>
+      <li>Si te llega un correo de BotanIQ, pulsa su enlace para confirmarlo. Después vuelve a la app desde el icono y entra con tu correo y tu contraseña.</li>
+      <li id="step-house">Crea tu casa, o elige <b>«Unirme con código»</b> si alguien te ha invitado.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span> Primeros pasos</h2>
+    <ol>
+      <li>Toca <b>+</b> y hazle una foto a tu planta: la identifica sola y prepara sus cuidados.</li>
+      <li>Activa los <b>avisos</b> y elige a qué hora te vienen bien. Te llegará uno solo con todas las plantas que tocan.</li>
+      <li>¿Dudas sobre abono, plagas o trasplantes? Pregúntale a <b>Florencio</b> 👨‍🌾, tu botánico de confianza.</li>
+    </ol>
+    <a class="btn" id="open" href="../">Abrir BotanIQ</a>
+  </section>
+</main>
+<script src="instalar.js"></script>
+</body>
+</html>

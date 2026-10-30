@@ -3,6 +3,7 @@ import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
 import { forgetDevice } from '../lib/push.js';
 import { go } from '../lib/nav.js';
+import { shareApp, installUrl } from '../lib/share.js';
 import { pushSupported, isIOS, isStandalone, disablePush, testNotification, fmtHour } from '../lib/push.js';
 import LocationPicker from '../components/LocationPicker.jsx';
 import ZoneEditor, { zoneKind } from '../components/ZoneEditor.jsx';
@@ -27,11 +28,7 @@ export default function SettingsPage(ctx) {
     } catch (e) { notify(e.message); } finally { setBusy(false); }
   };
 
-  const share = async () => {
-    const text = `Únete a «${household.name}» en BotanIQ con el código ${household.invite_code}\n${location.origin}${location.pathname}`;
-    if (navigator.share) { try { await navigator.share({ text }); } catch { /* cancelado */ } }
-    else { await navigator.clipboard.writeText(text); notify('Invitación copiada'); }
-  };
+  const share = () => shareApp({ code: household.invite_code, house: household.name });
 
   const leave = async () => {
     if (!confirm(`¿Salir de «${household.name}»? Si eres la última persona, sus plantas quedarán inaccesibles.`)) return;
@@ -77,7 +74,7 @@ export default function SettingsPage(ctx) {
         )}
       </Section>
 
-      <Section header={household.name} inset="icon" footer="Comparte el código para que otras personas cuiden contigo de estas plantas.">
+      <Section header={household.name} inset="icon" footer="«Invitar» envía el enlace, cómo instalarla y el código para que otras personas cuiden contigo de estas plantas.">
         <Cell icon="person" iconBg="#5856d6" title="Miembros" value={members.map((m) => m.display_name || '¿?').join(', ')} />
         <Cell icon="share" iconBg="#0a7aff" title="Invitar" value={<span className="num" style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 1 }}>{household.invite_code}</span>} chevron onClick={share} />
         <Cell icon="refresh" iconBg="#8e8e93" title={<span className="c-tint">Cambiar el código</span>} sub="El anterior dejará de servir" onClick={async () => {
@@ -127,6 +124,11 @@ export default function SettingsPage(ctx) {
           </Cell>
         ))}
         <Cell title={<span className="c-tint">Crear o unirme a otra casa</span>} href="#/join" />
+      </Section>
+
+      <Section header="Compartir BotanIQ" inset="icon">
+        <Cell icon="share" iconBg="#25d366" title="Recomendar BotanIQ" sub="Por WhatsApp, con cómo instalarla y registrarse" chevron onClick={() => shareApp()} />
+        {!isStandalone && <Cell icon="sprout" iconBg="var(--tint)" title="Instalarla como app" sub="Pasos para iPhone y Android" chevron href={installUrl()} />}
       </Section>
 
       {import.meta.env.VITE_DEMO && (

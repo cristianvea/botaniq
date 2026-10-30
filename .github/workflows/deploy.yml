@@ -30,7 +30,9 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          BASE_PATH: /${{ github.event.repository.name }}/
+          # Con dominio propio (variable SITE_URL, p. ej. https://botaniq.es/) la app vive en la raíz
+          BASE_PATH: ${{ vars.SITE_URL && '/' || format('/{0}/', github.event.repository.name) }}
+          VITE_SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}/', github.repository_owner, github.event.repository.name) }}
           VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           VITE_PLANTNET_KEY: ${{ secrets.PLANTNET_KEY }}

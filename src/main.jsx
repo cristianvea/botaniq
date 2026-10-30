@@ -1,7 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import Moved from './components/Moved.jsx';
 import './styles.css';
+import { capturePendingCode } from './lib/share.js';
+
+// Enlace de invitación (?casa=CÓDIGO): lo guardamos para la pantalla de unirse
+capturePendingCode();
 
 // En la demo publicada no hay diálogos del navegador: confirmamos directamente
 if (import.meta.env.VITE_DEMO) window.confirm = () => true;
@@ -24,5 +29,6 @@ if ('serviceWorker' in navigator && !import.meta.env.VITE_DEMO) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
+    <Moved />
   </StrictMode>
 );

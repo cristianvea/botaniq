@@ -2,12 +2,14 @@ import { useState } from 'react';
 import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
 import { forgetDevice } from '../lib/push.js';
+import { pendingCode, clearPendingCode } from '../lib/share.js';
 import { NavBar, Section, Segmented, Icon, Spinner, TextField } from '../components/ui.jsx';
 
 export default function OnboardingPage({ user, onDone, canCancel }) {
-  const [mode, setMode] = useState('create');
+  const [invited] = useState(pendingCode); // código que llegó en el enlace de invitación
+  const [mode, setMode] = useState(invited ? 'join' : 'create');
   const [name, setName] = useState('Mi casa');
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(invited);
   const [me, setMe] = useState(user.email.split('@')[0]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -17,6 +19,7 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
     setBusy(true); setErr(null);
     try {
       const id = mode === 'create' ? await db.createHousehold(name.trim(), me.trim()) : await db.joinHousehold(code, me.trim());
+      clearPendingCode();
       await onDone(id);
     } catch (ex) { setErr(ex.message); } finally { setBusy(false); }
   };
@@ -25,12 +28,12 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
     <div className="screen">
       <NavBar
         title={canCancel ? 'Otra casa' : 'Bienvenido'}
-        left={canCancel ? <a className="nav-btn" href="#/settings">Cancelar</a> : null}
+        left={canCancel ? <a className="nav-btn" href="#/settings" onClick={clearPendingCode}>Cancelar</a> : null}
         right={!canCancel ? <button className="nav-btn" onClick={async () => { await forgetDevice(); supabase.auth.signOut(); }}>Salir</button> : null}
       />
       <div className="empty-state" style={{ paddingTop: 8, paddingBottom: 24 }}>
         <div className="glyph"><Icon name="house" size={40} /></div>
-        <h1 className="t-title2">{canCancel ? 'Añade otra casa' : 'Empecemos por tu casa'}</h1>
+        <h1 className="t-title2">{invited ? 'Te han invitado a una casa' : canCancel ? 'Añade otra casa' : 'Empecemos por tu casa'}</h1>
         <p className="t-sub c2">Las plantas se organizan en casas. Puedes compartir la tuya para que cualquiera marque una planta como regada.</p>
       </div>
 

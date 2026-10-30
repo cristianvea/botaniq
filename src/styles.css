@@ -928,3 +928,16 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .routine-opt.on { border-color: var(--tint); background: var(--tint-soft); }
 .routine-opt.on b { color: var(--tint-d); }
 @media (prefers-color-scheme: dark) { .routine-opt.on b { color: var(--tint); } }
+
+/* Aviso para instalarla desde la pantalla de acceso */
+.install-hint { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; text-decoration: none; color: var(--label);
+  background: var(--tint-soft); border: 2px solid color-mix(in srgb, var(--tint) 35%, transparent); }
+.install-hint .ih-emoji { font-size: 26px; }
+.install-hint b { font-weight: 800; color: var(--tint-d); }
+@media (prefers-color-scheme: dark) { .install-hint b { color: var(--tint); } }
+
+/* Aviso de cambio de dirección */
+.moved { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
+.moved-card { width: 100%; max-width: 480px; margin: 0 auto; background: var(--card); border-radius: 22px; padding: 20px; text-align: center; display: flex; flex-direction: column; gap: 8px; }
+.moved-card .moved-emoji { font-size: 40px; }
+.moved-card b { font-weight: 900; }

@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { Spinner, TextField } from '../components/ui.jsx';
 import appIcon from '../assets/logo.svg';
+import { installUrl } from '../lib/share.js';
+
+const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const mobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
 
 const TITLES = { login: 'Inicia sesión', signup: 'Crea tu cuenta', reset: 'Recuperar contraseña' };
 
@@ -114,6 +118,14 @@ export default function AuthPage() {
           : <p className="t-sub c2">¿Ya tienes cuenta? <button className="btn plain small" style={{ padding: 0, minHeight: 0 }} onClick={() => switchTo('login')}>Inicia sesión</button></p>}
         {mode === 'reset' && <button className="btn plain small" onClick={() => switchTo('login')}>Volver</button>}
       </div>
+
+      {/* Abierta en el navegador del móvil: mejor instalarla primero (en iPhone, la sesión del navegador no pasa a la app) */}
+      {mobile && !standalone && (
+        <a className="install-hint" href={installUrl()}>
+          <span className="ih-emoji">📲</span>
+          <span><b>Instálala como app</b><br /><span className="t-foot c2">Te avisa de cuándo regar. Hazlo antes de crear la cuenta.</span></span>
+        </a>
+      )}
     </div>
   );
 }
