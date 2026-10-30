@@ -54,6 +54,12 @@ export const WATERING = {
     amount: null,
     soft: true,
   },
+  flor_interior: {
+    method: 'Por encima, sin encharcar',
+    short: 'Cuando seque por arriba; vaciar el plato',
+    how: 'Riega por encima del sustrato con agua a temperatura ambiente, sin mojar hojas ni brácteas, hasta que empiece a salir por abajo. A los 15 minutos vacía el plato o el cubremacetas: con las raíces encharcadas se le caen las hojas.',
+    amount: 0.8,
+  },
   floracion: {
     method: 'Por encima, sin mojar flores',
     short: 'Al pie de la planta, sin mojar flores',
@@ -149,7 +155,7 @@ function amountText(plant, w) {
 
 const SOAK_MIN = { small: 5, medium: 10 };
 const NO_MIST = ['cactus', 'suculenta', 'resistente', 'aromatica_lenosa', 'geranio'];
-const BOTTOM_OK = ['floracion', 'geranio', 'suculenta', 'tropical_humeda', 'aromatica_blanda'];
+const BOTTOM_OK = ['flor_interior', 'floracion', 'geranio', 'suculenta', 'tropical_humeda', 'aromatica_blanda'];
 
 function lastSoil(events = []) {
   const c = events.filter((e) => e.type === 'checkin' && e.soil).sort((a, b) => new Date(b.at) - new Date(a.at))[0];
@@ -283,7 +289,7 @@ export function wateringGuide(plant, { weather = null, status = null, events = [
     mistAdvice = every
       ? { title: every === 1 ? 'Pulverizar una vez al día' : `Pulverizar cada ${every} días`, sub: `Humedad del aire ~${Math.round(rh)} %${every === 1 ? ', muy seca para ella' : ''}. Por la mañana, con agua sin cal, para que las hojas se sequen antes de la noche.`, every }
       : { title: 'Ahora no hace falta pulverizar', sub: `Humedad del aire ~${Math.round(rh)} %: suficiente.` };
-  } else if (plant.profile === 'floracion' || plant.profile === 'hortensia') {
+  } else if (['floracion', 'hortensia', 'flor_interior'].includes(plant.profile)) {
     mistAdvice = { title: 'No pulverices las flores', sub: 'Se manchan y aparecen hongos. Si el aire está seco, mejor un plato con piedras y agua debajo, sin que lo toque.' };
   }
 

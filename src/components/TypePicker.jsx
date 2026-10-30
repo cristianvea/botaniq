@@ -5,7 +5,7 @@ import { Sheet, Icon } from './ui.jsx';
 const GROUPS = [
   ['Interior', ['tropical', 'tropical_humeda', 'ficus', 'palmera', 'resistente', 'orquidea']],
   ['Crasas', ['cactus', 'suculenta']],
-  ['Flor y exterior', ['floracion', 'geranio', 'hortensia', 'arbusto_exterior', 'bonsai']],
+  ['Flor y exterior', ['flor_interior', 'floracion', 'geranio', 'hortensia', 'arbusto_exterior', 'bonsai']],
   ['Aromáticas y huerto', ['aromatica_lenosa', 'aromatica_blanda', 'huerto']],
   ['Especiales', ['carnivora', 'tillandsia']],
   ['', ['generica']],

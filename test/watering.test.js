@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeStatus, dailyRate } from '../src/lib/watering.js';
-import { profileForTaxon } from '../src/lib/profiles.js';
 
 function weather({ tmean = 20, rh = 50, et0 = 3, precip = 0, today = '2026-07-15' } = {}) {
   const days = [];
@@ -211,4 +210,12 @@ test('intervalos realistas: no hacer esperar de más', () => {
   assert.ok(days({ profile: 'tropical' }, autumn) <= 9, 'monstera en otoño');
   assert.ok(days({ profile: 'tropical' }, winter) <= 12, 'monstera en invierno');
   assert.ok(days({ profile: 'tropical_humeda' }, autumn) <= 5, 'calathea en otoño');
+});
+
+
+test('flor de pascua no es una crasa', () => {
+  assert.equal(profileForTaxon({ species: 'Euphorbia pulcherrima Willd. ex Klotzsch', genus: 'Euphorbia', family: 'Euphorbiaceae' }), 'flor_interior');
+  assert.equal(profileForTaxon({ species: 'Euphorbia milii', genus: 'Euphorbia' }), 'suculenta');
+  const d = 1 / dailyRate({ profile: 'flor_interior', location: 'indoor', light: 'indirect', pot: 'medium', pot_material: 'plastic', substrate: 'unknown' }, { date: '2026-12-15', tmean: 7, rh: 75, lat: 40.4 });
+  assert.ok(d >= 5 && d <= 7.5, `pascua ${d}`);
 });

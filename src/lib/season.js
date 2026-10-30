@@ -90,6 +90,11 @@ const BY_PROFILE = {
     autumn: { care: 'Fin de temporada de tomates y pimientos: es normal que la planta decaiga.', normal: 'planta envejecida, hojas bajas secas, frutos que no maduran' },
     winter: { growth: 'fuera de temporada', normal: 'plantas de verano secas o muertas' },
   },
+  flor_interior: {
+    autumn: { growth: 'empieza su época', care: 'Su temporada: luz abundante sin sol directo de mediodía y 15–22 °C. Evita radiadores y corrientes frías.', normal: 'brácteas que se colorean (flor de pascua) y botones en ciclámenes' },
+    winter: { growth: 'en flor', care: 'Riega cuando seque por arriba y nunca la dejes encharcada. Cerca de una ventana luminosa, lejos de la calefacción.', normal: 'pérdida de alguna hoja baja; las flores de verdad son las bolitas amarillas del centro' },
+    spring: { growth: 'fin de la floración', care: 'Tras la floración pierde brácteas y hojas: es normal. Reduce el riego.', normal: 'brácteas que se caen o verdean' },
+  },
   floracion: {
     autumn: { normal: 'fin de la floración de temporada; planta decaída si es anual' },
     winter: { normal: 'sin flores en plantas de verano; floración en ciclámenes y prímulas' },

@@ -34,6 +34,10 @@ export const PROFILES = {
     label: 'Orquídea (phalaenopsis y similares)', emoji: '🌸', baseDays: 10.5, defaultSubstrate: 'corteza',
     tip: 'Riega por inmersión 10 min cuando las raíces estén plateadas; escurre bien.',
   },
+  flor_interior: {
+    label: 'Flor de interior de invierno (flor de pascua, ciclamen…)', emoji: '❤️', baseDays: 4.2, defaultSubstrate: 'universal',
+    tip: 'Riega cuando los 2 cm de arriba estén secos y vacía siempre el plato: se pudre con facilidad. Lejos de radiadores y corrientes.',
+  },
   floracion: {
     label: 'Planta de flor de temporada', emoji: '🌺', baseDays: 3, defaultSubstrate: 'universal',
     tip: 'En floración consume mucha agua. Evita mojar flores y hojas.',
@@ -128,7 +132,7 @@ const GENUS = {
   ficus: ['Ficus','Pachira','Crassula_','Ardisia','Citrus','Coffea','Laurus','Ligustrum','Murraya','Gardenia'],
   palmera: ['Chamaedorea','Howea','Kentia','Phoenix','Rhapis','Livistona','Trachycarpus','Washingtonia','Chamaerops','Cycas','Areca','Caryota','Ravenea','Archontophoenix','Butia','Syagrus','Zamia'],
   orquidea: ['Phalaenopsis','Dendrobium','Oncidium','Cattleya','Cymbidium','Vanda','Paphiopedilum','Miltonia','Miltoniopsis','Zygopetalum','Cambria','Ludisia','Masdevallia','Epidendrum','Brassia'],
-  floracion: ['Petunia','Impatiens','Primula','Cyclamen','Viola','Calibrachoa','Begonia_','Tagetes','Zinnia','Dahlia','Gerbera','Chrysanthemum','Osteospermum','Dimorphotheca','Lobelia','Salvia_','Fuchsia','Verbena','Celosia','Euphorbia_','Calceolaria','Sinningia','Hippeastrum','Tulipa','Narcissus','Hyacinthus','Anemone','Ranunculus','Bacopa','Sutera','Lantana','Mandevilla','Dipladenia','Torenia','Cuphea','Catharanthus','Antirrhinum','Dianthus','Campanula','Kalanchoe_','Spathiphyllum_','Bellis','Ageratum','Cosmos','Helianthus','Tropaeolum'],
+  floracion: ['Petunia','Impatiens','Primula','Cyclamen_','Viola','Calibrachoa','Begonia_','Tagetes','Zinnia','Dahlia','Gerbera','Chrysanthemum','Osteospermum','Dimorphotheca','Lobelia','Salvia_','Fuchsia','Verbena','Celosia','Euphorbia_','Calceolaria','Sinningia','Hippeastrum','Tulipa','Narcissus','Hyacinthus','Anemone','Ranunculus','Bacopa','Sutera','Lantana','Mandevilla','Dipladenia','Torenia','Cuphea','Catharanthus','Antirrhinum','Dianthus','Campanula','Kalanchoe_','Spathiphyllum_','Bellis','Ageratum','Cosmos','Helianthus','Tropaeolum'],
   geranio: ['Pelargonium','Geranium'],
   aromatica_lenosa: ['Rosmarinus','Salvia','Lavandula','Thymus','Olea','Bougainvillea','Nerium','Myrtus','Santolina','Helichrysum','Cistus','Teucrium','Origanum','Satureja','Callistemon','Pistacia','Westringia','Phlomis','Euryops','Leucophyllum','Polygala','Plumbago','Jasminum','Trachelospermum','Punica','Ceratonia','Pittosporum','Viburnum','Arbutus','Lagerstroemia'],
   aromatica_blanda: ['Ocimum','Mentha','Petroselinum','Coriandrum','Anethum','Melissa','Allium','Rumex','Eruca','Lactuca','Spinacia','Cymbopogon','Stevia','Aloysia','Tropaeolum_'],
@@ -185,7 +189,17 @@ for (const [profile, list] of Object.entries(GENUS)) {
   }
 }
 
-export function profileForTaxon({ genus, family }) {
+// Especies que no siguen a su género (p. ej. la flor de pascua es una Euphorbia, pero no es una crasa)
+const SPECIES = {
+  'Euphorbia pulcherrima': 'flor_interior',
+  'Cyclamen persicum': 'flor_interior',
+  'Rhododendron simsii': 'hortensia',
+  'Kalanchoe blossfeldiana': 'suculenta',
+};
+
+export function profileForTaxon({ species, genus, family }) {
+  const sp = (species || '').split(' ').slice(0, 2).join(' ');
+  if (SPECIES[sp]) return SPECIES[sp];
   if (genus && GENUS_INDEX[genus]) return GENUS_INDEX[genus];
   if (family && FAMILY[family]) return FAMILY[family];
   return 'generica';
