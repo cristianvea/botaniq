@@ -8,7 +8,6 @@ import { NavBar, Section, Segmented, Switch, Icon, Spinner, Sheet, TextField, Se
 import ZoneEditor from '../components/ZoneEditor.jsx';
 import TypePicker from '../components/TypePicker.jsx';
 import { dailyRate, routineDays, typicalDay } from '../lib/watering.js';
-import { MONTHS } from '../lib/reminders.js';
 
 const EMPTY = {
   name: '', species: '', genus: '', family: '', common_name: '',
@@ -18,10 +17,6 @@ const EMPTY = {
 const LAST = [['0', 'Hoy'], ['3', 'Hace unos días'], ['7', 'Hace una semana'], ['unknown', 'No lo sé']];
 const LAST_ZONE_KEY = 'botaniq.lastZone';
 const ROUTINE_DAYS = [1, 2, 3, 4, 5, 7, 10, 14, 30];
-// Abono de la rutina propia: [clave, texto, modo, cada]
-const FEED = [['none', 'No abono'], ['w1', 'En cada riego', 'with_watering', 1], ['w2', 'Cada 2 riegos', 'with_watering', 2],
-  ['w4', 'Cada 4 riegos', 'with_watering', 4], ['d30', 'Una vez al mes', 'every_days', 30]];
-const GROWING = [3, 4, 5, 6, 7, 8, 9]; // el abono, solo en la época de crecimiento
 const thisMonth = () => new Date().getMonth() + 1;
 const daysText = (n) => (n === 1 ? 'cada día' : `cada ${n} días`);
 // Ayuda para elegir el tamaño: se mide el ancho de la boca de la maceta
@@ -58,7 +53,6 @@ export default function EditPlantPage(ctx) {
   const [more, setMore] = useState(false);
   // ¿Riega con su propia rutina ('own') o prefiere que BotanIQ le aconseje ('auto')? null = aún sin contestar
   const [routine, setRoutine] = useState(existing ? (existing.fixed_days > 0 ? 'own' : 'auto') : null);
-  const [feed, setFeed] = useState('none');
   const [saving, setSaving] = useState(false);
   const camRef = useRef();
   const libRef = useRef();
@@ -195,13 +189,6 @@ export default function EditPlantPage(ctx) {
       if (!existing && lastWatered !== 'unknown') {
         const when = lastWatered === 'date' ? new Date(lastDate + 'T10:00:00') : new Date(Date.now() - Number(lastWatered) * 86400000);
         await db.addEvent(saved, 'water', user.id, when);
-      }
-      // Abono de su rutina → recordatorio junto al riego
-      const f = FEED.find((x) => x[0] === feed);
-      if (!existing && routine === 'own' && f?.[2]) {
-        try {
-          await db.saveReminder({ household_id: household.id, plant_id: saved.id, title: 'Abono', mode: f[2], every: f[3], months: GROWING });
-        } catch (ex) { notify(ex.message); }
       }
       await reload();
       go(`#/plant/${saved.id}`);
@@ -395,7 +382,7 @@ export default function EditPlantPage(ctx) {
 
       {/* Rutina: si ya sabe cuidarla, BotanIQ no se mete */}
       <Section header="Rutina de riego" footer={routine === 'own'
-        ? 'BotanIQ respetará tu rutina y no la cambiará por su cuenta. Si un día quieres consejo sobre abono, trasplante o lo que sea, pregúntale a Florencio.'
+        ? 'BotanIQ respetará tu rutina y no la cambiará por su cuenta. ¿Abonas? Puedes añadirlo después en su ficha, en Recordatorios, o pedirle un plan a Florencio.'
         : routine === 'auto'
           ? 'BotanIQ calcula cada cuánto regarla según la planta, la maceta y el tiempo de tu zona, y va aprendiendo de lo que haces (si la riegas antes o le das a «Aún húmeda»).'
           : 'Si ya sabes cómo cuidarla, ponlo y no te molestaremos con otra cosa.'}>
@@ -432,17 +419,6 @@ export default function EditPlantPage(ctx) {
               </div>
               <Switch checked={!!form.fixed_seasonal} onChange={(v) => set({ fixed_seasonal: v })} label="Adaptarla a la estación" />
             </div>
-            {!existing && (
-              <div className="cell stacked">
-                <span className="t-foot c2 upper">¿Y abono?</span>
-                <div className="chips wrap">
-                  {FEED.map(([k, l]) => (
-                    <button type="button" key={k} className={`chip ${feed === k ? 'on' : ''}`} onClick={() => setFeed(k)}>{l}</button>
-                  ))}
-                </div>
-                {feed !== 'none' && <span className="t-foot c2">Te lo recordaré con el aviso de riego, de {MONTHS[GROWING[0] - 1]} a {MONTHS[GROWING[GROWING.length - 1] - 1]}. Puedes cambiarlo en su ficha.</span>}
-              </div>
-            )}
           </>
         )}
       </Section>
