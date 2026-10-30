@@ -3,11 +3,11 @@
 
 export const PROFILES = {
   cactus: {
-    label: 'Cactus', emoji: '🌵', baseDays: 21, defaultSubstrate: 'cactus',
+    label: 'Cactus', emoji: '🌵', baseDays: 28, defaultSubstrate: 'cactus',
     tip: 'Riega a fondo solo cuando el sustrato esté totalmente seco. En invierno, casi nada.',
   },
   suculenta: {
-    label: 'Suculenta', emoji: '🪴', baseDays: 14, defaultSubstrate: 'cactus',
+    label: 'Suculenta', emoji: '🪴', baseDays: 18, defaultSubstrate: 'cactus',
     tip: 'Deja secar por completo entre riegos. Si las hojas se arrugan, toca agua.',
   },
   resistente: {
@@ -15,35 +15,35 @@ export const PROFILES = {
     tip: 'Prefiere quedarse corta de agua. El exceso pudre los rizomas.',
   },
   tropical: {
-    label: 'Tropical de interior (monstera, potos, filodendro…)', emoji: '🌿', baseDays: 8, defaultSubstrate: 'universal',
+    label: 'Tropical de interior (monstera, potos, filodendro…)', emoji: '🌿', baseDays: 6.5, defaultSubstrate: 'universal',
     tip: 'Riega cuando los 2–3 cm superiores estén secos.',
   },
   tropical_humeda: {
-    label: 'Tropical de humedad alta (calathea, helecho, fitonia…)', emoji: '🌱', baseDays: 5, defaultSubstrate: 'universal',
+    label: 'Tropical de humedad alta (calathea, helecho, fitonia…)', emoji: '🌱', baseDays: 3.5, defaultSubstrate: 'universal',
     tip: 'Mantén el sustrato ligeramente húmedo, nunca encharcado. Agradece la humedad ambiental.',
   },
   ficus: {
-    label: 'Ficus y arbustos de interior', emoji: '🌳', baseDays: 9, defaultSubstrate: 'universal',
+    label: 'Ficus y arbustos de interior', emoji: '🌳', baseDays: 6.5, defaultSubstrate: 'universal',
     tip: 'Riega cuando la mitad superior del sustrato esté seca. No le gustan los cambios de sitio.',
   },
   palmera: {
-    label: 'Palmera', emoji: '🌴', baseDays: 8, defaultSubstrate: 'universal',
+    label: 'Palmera', emoji: '🌴', baseDays: 6.5, defaultSubstrate: 'universal',
     tip: 'Riego regular sin encharcar. Puntas marrones = aire seco o agua con mucha cal.',
   },
   orquidea: {
-    label: 'Orquídea (phalaenopsis y similares)', emoji: '🌸', baseDays: 8, defaultSubstrate: 'corteza',
+    label: 'Orquídea (phalaenopsis y similares)', emoji: '🌸', baseDays: 10.5, defaultSubstrate: 'corteza',
     tip: 'Riega por inmersión 10 min cuando las raíces estén plateadas; escurre bien.',
   },
   floracion: {
-    label: 'Planta de flor de temporada', emoji: '🌺', baseDays: 4, defaultSubstrate: 'universal',
+    label: 'Planta de flor de temporada', emoji: '🌺', baseDays: 3, defaultSubstrate: 'universal',
     tip: 'En floración consume mucha agua. Evita mojar flores y hojas.',
   },
   geranio: {
-    label: 'Geranio / gitanilla', emoji: '🌺', baseDays: 6, defaultSubstrate: 'universal',
+    label: 'Geranio / gitanilla', emoji: '🌺', baseDays: 5, defaultSubstrate: 'universal',
     tip: 'Tolera algo de sequía; mejor quedarse corto que pasarse.',
   },
   aromatica_lenosa: {
-    label: 'Mediterránea leñosa (romero, lavanda, tomillo, olivo…)', emoji: '🫒', baseDays: 10, defaultSubstrate: 'universal',
+    label: 'Mediterránea leñosa (romero, lavanda, tomillo, olivo…)', emoji: '🫒', baseDays: 7, defaultSubstrate: 'universal',
     tip: 'Muy tolerante a la sequía. Odia el encharcamiento.',
   },
   aromatica_blanda: {
@@ -59,7 +59,7 @@ export const PROFILES = {
     tip: 'En maceta se seca mucho más que en suelo. Riega a fondo.',
   },
   hortensia: {
-    label: 'Acidófila (brezo, hortensia, azalea, camelia…)', emoji: '💠', baseDays: 4, defaultSubstrate: 'acida',
+    label: 'Acidófila (brezo, hortensia, azalea, camelia…)', emoji: '💠', baseDays: 2.7, defaultSubstrate: 'acida',
     tip: 'Usa agua sin cal (de lluvia o reposada). Le gusta el sustrato fresco.',
   },
   carnivora: {
@@ -71,11 +71,11 @@ export const PROFILES = {
     tip: 'Sumérgela 20–30 min y déjala secar boca abajo.',
   },
   bonsai: {
-    label: 'Bonsái', emoji: '🎍', baseDays: 3, defaultSubstrate: 'cactus',
+    label: 'Bonsái', emoji: '🎍', baseDays: 2.5, defaultSubstrate: 'cactus',
     tip: 'Poco sustrato: revisa a menudo. Nunca dejes que se seque del todo.',
   },
   generica: {
-    label: 'Genérica / no lo sé', emoji: '🪴', baseDays: 7, defaultSubstrate: 'universal',
+    label: 'Genérica / no lo sé', emoji: '🪴', baseDays: 5.8, defaultSubstrate: 'universal',
     tip: 'Riega cuando los primeros centímetros estén secos al tacto.',
   },
 };
@@ -84,8 +84,8 @@ export const PROFILES = {
 export const SUBSTRATES = {
   unknown:   { label: 'No lo sé (el que traía de la tienda)', factor: null },
   universal: { label: 'Universal / turba con perlita', factor: 1 },
-  cactus:    { label: 'Cactus o mineral (arena, pómice, akadama)', factor: 1.4 },
-  corteza:   { label: 'Corteza de pino (orquídeas)', factor: 1.6 },
+  cactus:    { label: 'Cactus o mineral (arena, pómice, akadama)', factor: 1.25 },
+  corteza:   { label: 'Corteza de pino (orquídeas)', factor: 1.25 },
   turba:     { label: 'Turba rubia / esfagno', factor: 0.8 },
   acida:     { label: 'Sustrato para acidófilas', factor: 0.9 },
   coco:      { label: 'Fibra de coco', factor: 1.1 },
@@ -94,15 +94,15 @@ export const SUBSTRATES = {
 };
 
 export const LIGHTS = {
-  direct:   { label: 'Sol directo', factor: 1.3, outdoorFactor: 1 },
+  direct:   { label: 'Sol directo', factor: 1.2, outdoorFactor: 1 },
   indirect: { label: 'Luz indirecta brillante', factor: 1, outdoorFactor: 0.75 },
-  low:      { label: 'Poca luz / sombra', factor: 0.75, outdoorFactor: 0.55 },
+  low:      { label: 'Poca luz / sombra', factor: 0.85, outdoorFactor: 0.6 },
 };
 
 export const POTS = {
-  small:  { label: 'Pequeña (< 12 cm)', factor: 1.35 },
+  small:  { label: 'Pequeña (< 12 cm)', factor: 1.25 },
   medium: { label: 'Mediana (12–25 cm)', factor: 1 },
-  large:  { label: 'Grande (> 25 cm)', factor: 0.75 },
+  large:  { label: 'Grande (> 25 cm)', factor: 0.85 },
 };
 
 export const POT_MATERIALS = {

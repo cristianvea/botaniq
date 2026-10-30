@@ -201,3 +201,14 @@ test('un solo aviso con todas las plantas', () => {
   assert.match(two.body, /Pueblo\n💧 Balcón: Geranio/);
   assert.equal(buildNotification([null]), null);
 });
+
+test('intervalos realistas: no hacer esperar de más', () => {
+  const autumn = { date: '2026-10-25', tmean: 15, rh: 65, et0: 2.2, lat: 40.4 };
+  const winter = { date: '2026-01-15', tmean: 7, rh: 75, et0: 1, lat: 40.4 };
+  const days = (p, d) => 1 / dailyRate({ location: 'indoor', substrate: 'unknown', pot_material: 'plastic', pot: 'medium', light: 'indirect', ...p }, d);
+  const brezo = days({ profile: 'hortensia', light: 'direct' }, autumn);
+  assert.ok(brezo >= 2 && brezo <= 4, `brezo ${brezo}`);
+  assert.ok(days({ profile: 'tropical' }, autumn) <= 9, 'monstera en otoño');
+  assert.ok(days({ profile: 'tropical' }, winter) <= 12, 'monstera en invierno');
+  assert.ok(days({ profile: 'tropical_humeda' }, autumn) <= 5, 'calathea en otoño');
+});

@@ -8,6 +8,8 @@ import { photoperiodFactor } from './season.js';
 const RAIN_FULL_MM = 10;      // lluvia que equivale a un riego completo en maceta
 const ET0_REF = 3;            // mm/día de referencia (día templado de primavera)
 const WET_CHECK_DRYNESS = 0.7; // "aún estaba húmeda" → la dejamos en este nivel
+const INDOOR_DAMPING = 0.6;   // cuánto pesa el tiempo de fuera dentro de casa
+const OUTDOOR_DAMPING = 0.75; // y fuera (la ET0 sola exagera invierno/verano para una maceta)
 
 // Estado de la tierra que indica el usuario al revisar (tocando 2–3 cm)
 export const SOIL = {
@@ -41,7 +43,7 @@ export function envFactor(plant, day) {
   if (!day) return 1;
   if (plant.location === 'outdoor') {
     const et0 = day.et0 ?? ET0_REF;
-    let f = clamp(et0 / ET0_REF, 0.15, 2.8);
+    let f = clamp(et0 / ET0_REF, 0.15, 2.8) ** OUTDOOR_DAMPING;
     if ((day.tmean ?? 15) < 6) f *= 0.6; // frío: la planta casi no consume
     return f * (LIGHTS[plant.light] || LIGHTS.indirect).outdoorFactor;
   }
@@ -50,7 +52,8 @@ export function envFactor(plant, day) {
   const growth = clamp((t - 8) / 13, 0.4, 1.3);
   // Días largos (verano) → más fotosíntesis y transpiración; días cortos (invierno) → menos
   const daylight = photoperiodFactor(day.lat, day.date);
-  return fv * growth * daylight * (LIGHTS[plant.light] || LIGHTS.indirect).factor;
+  // Dentro de casa el clima cambia mucho menos que fuera: suavizamos el efecto (exponente < 1)
+  return (fv * growth * daylight) ** INDOOR_DAMPING * (LIGHTS[plant.light] || LIGHTS.indirect).factor;
 }
 
 /** Tasa de secado diaria de la planta (fracción de "depósito" que pierde ese día) */
