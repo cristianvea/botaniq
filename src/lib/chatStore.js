@@ -8,6 +8,23 @@ const listeners = new Set();
 const emit = (ev) => listeners.forEach((fn) => fn(ev));
 
 export const getPending = () => pending;
+
+// Copia de los mensajes de la casa, para que no se pierdan al cambiar de pantalla
+let cache = { hid: null, list: null };
+export const cachedMessages = (hid) => (cache.hid === hid ? cache.list : null);
+export function rememberMessages(hid, list) { cache = { hid, list }; }
+export function addMessage(hid, msg) { if (cache.hid === hid) cache = { hid, list: [...(cache.list || []), msg] }; }
+/** Junta lo que viene de la base de datos con lo que solo está en memoria (errores, respuestas recién llegadas, miniaturas) */
+export function mergeMessages(fetched, local = []) {
+  const byId = new Map(local.map((m) => [m.id, m]));
+  const out = fetched.map((m) => (byId.get(m.id)?.localUrl ? { ...m, localUrl: byId.get(m.id).localUrl } : m));
+  const ids = new Set(fetched.map((m) => m.id));
+  for (const m of local) if (!ids.has(m.id)) out.push(m);
+  return out.sort((a, b) => String(a.created_at || '9').localeCompare(String(b.created_at || '9')));
+}
+// Preguntas que le quedan hoy (lo dice el servidor)
+let remaining = null;
+export const getRemaining = () => remaining;
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 export function stop(threadId) { if (pending && (!threadId || pending.threadId === threadId)) pending.ctrl.abort('stop'); }
 
@@ -17,7 +34,7 @@ export function stop(threadId) { if (pending && (!threadId || pending.threadId =
  * y { t:'error', threadId, msg } si falla o se detiene.
  */
 export async function ask({ household, user, plants, threadId, plantId, history, context, image }) {
-  if (pending) pending.ctrl.abort('replaced');
+  if (pending) throw new Error('Florencio aún está respondiendo otra pregunta');
   const ctrl = new AbortController();
   const me = { threadId, text: '', tier: null, ctrl };
   pending = me;
@@ -28,7 +45,7 @@ export async function ask({ household, user, plants, threadId, plantId, history,
       messages: history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
       context, image, signal: ctrl.signal,
       onEvent: (ev) => {
-        if (ev.t === 'meta') me.tier = ev.tier;
+        if (ev.t === 'meta') { me.tier = ev.tier; if (ev.remaining != null) remaining = ev.remaining; }
         if (ev.t === 'delta') me.text += ev.text;
         if (pending === me) emit({ t: 'live', threadId, text: me.text, tier: me.tier });
       },
@@ -39,15 +56,17 @@ export async function ask({ household, user, plants, threadId, plantId, history,
       household_id: household.id, user_id: user.id, plant_id: plantId, thread_id: threadId, role: 'assistant', content: res.answer,
       meta: { model: res.model, tier: res.tier, reason: res.reason, suggestions: res.suggestions, reminder: ids.length ? { ...res.reminder, plant_ids: ids } : null },
     });
+    addMessage(household.id, msg);
     emit({ t: 'done', threadId, msg });
   } catch (e) {
     const reason = ctrl.signal.reason;
-    if (reason === 'replaced') return;
     const aborted = e.name === 'AbortError' || ctrl.signal.aborted;
     const content = !aborted ? e.message
       : reason === 'timeout' ? 'Florencio está tardando demasiado. Vuelve a preguntar en un momento.'
       : 'Pregunta detenida.';
-    emit({ t: 'error', threadId, msg: { id: `err-${Date.now()}`, role: 'assistant', content, thread_id: threadId, meta: { error: !aborted, stopped: aborted } } });
+    const msg = { id: `err-${Date.now()}`, role: 'assistant', content, thread_id: threadId, created_at: new Date().toISOString(), meta: { error: !aborted, stopped: aborted } };
+    addMessage(household.id, msg);
+    emit({ t: 'error', threadId, msg });
   } finally {
     clearTimeout(timer);
     if (pending === me) { pending = null; emit({ t: 'idle', threadId }); }

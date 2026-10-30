@@ -23,7 +23,7 @@ export async function identifyPlant(blob, organ = 'auto') {
     const body = await res.text().catch(() => '');
     let detail = body;
     try { detail = JSON.parse(body).message || body; } catch { /* texto plano */ }
-    throw new Error(`Pl@ntNet rechaza la clave (${res.status}: ${String(detail).slice(0, 120)}). Clave usada: ${KEY.slice(0, 6)}…${KEY.slice(-3)} (${KEY.length} caracteres). Dominio: ${location.hostname}.`);
+    throw new Error(`Pl@ntNet ha rechazado la petición (${res.status}: ${String(detail).slice(0, 120)}). Revisa que ${location.hostname} esté en sus dominios autorizados.`);
   }
   if (res.status === 429) throw new Error('Se ha agotado el cupo diario de identificaciones de Pl@ntNet. Prueba mañana.');
   if (!res.ok) {

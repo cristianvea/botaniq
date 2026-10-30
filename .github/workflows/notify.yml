@@ -15,11 +15,23 @@ on:
         type: boolean
         default: false
 
+# Mínimos permisos: solo leer el código
+permissions:
+  contents: read
+
+# Nunca dos envíos a la vez
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
 jobs:
   notify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22

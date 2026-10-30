@@ -56,6 +56,7 @@ class Query {
   is(c, v) { this.filters.push((r) => (r[c] ?? null) === v); return this; }
   not(c, op, v) { if (op === 'is' && v === null) this.filters.push((r) => r[c] != null); return this; }
   order(c, { ascending = true } = {}) { this.sort = { c, ascending }; return this; }
+  limit(n) { this.max = n; return this; }
   insert(row) { this.op = 'insert'; this.payload = row; return this; }
   update(patch) { this.op = 'update'; this.payload = patch; return this; }
   upsert(row) { this.op = 'upsert'; this.payload = row; return this; }
@@ -76,6 +77,7 @@ class Query {
         const { c, ascending } = this.sort;
         out = [...out].sort((a, b) => (a[c] > b[c] ? 1 : a[c] < b[c] ? -1 : 0) * (ascending ? 1 : -1));
       }
+      if (this.max) out = out.slice(0, this.max);
     } else if (this.op === 'insert' || this.op === 'upsert') {
       const list = Array.isArray(this.payload) ? this.payload : [this.payload];
       for (const raw of list) {
@@ -123,6 +125,12 @@ export const supabase = {
       db.household_members.push({ household_id: id, user_id: me(), display_name: args.p_display_name });
       persist();
       return { data: id, error: null };
+    }
+    if (name === 'rotate_invite_code') {
+      const h = db.households.find((x) => x.id === args.p_household);
+      if (h) h.invite_code = Math.random().toString(36).slice(2, 12).toUpperCase();
+      persist();
+      return { data: h?.invite_code, error: null };
     }
     if (name === 'join_household') {
       const h = db.households.find((x) => x.invite_code === String(args.p_code).trim().toUpperCase());

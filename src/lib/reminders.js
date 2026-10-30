@@ -4,6 +4,9 @@
 export const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 const DAY = 86400000;
+// Fecha de calendario (AAAA-MM-DD) en la zona horaria dada (por defecto, la del dispositivo)
+const dayKey = (d, tz) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(d));
+const calendarDays = (a, b, tz) => Math.round((new Date(dayKey(b, tz)) - new Date(dayKey(a, tz))) / DAY);
 
 /** ¿Aplica este mes? (months vacío = todo el año) */
 export function inSeason(r, date = new Date()) {
@@ -15,11 +18,12 @@ export function inSeason(r, date = new Date()) {
  *  - with_watering: toca cada N riegos → { due, withWatering: true, left } (left = riegos que faltan)
  *  - every_days:    toca cada N días   → { due, daysLeft }
  */
-export function reminderStatus(r, events = [], now = new Date()) {
+export function reminderStatus(r, events = [], now = new Date(), tz = undefined) {
   if (!inSeason(r, now)) return { due: false, off: true };
   const since = new Date(r.last_done_at || r.created_at || 0).getTime();
   if (r.mode === 'every_days') {
-    const elapsed = r.last_done_at ? Math.floor((now - since) / DAY) : r.every; // nunca hecho → ya toca
+    // Días de calendario: si lo hiciste el día 1 por la noche, cada 7 días toca el día 8 desde por la mañana
+    const elapsed = r.last_done_at ? calendarDays(since, now, tz) : r.every; // nunca hecho → ya toca
     return { due: elapsed >= r.every, daysLeft: Math.max(0, r.every - elapsed) };
   }
   // Riegos hechos desde la última vez; toca en el riego número N

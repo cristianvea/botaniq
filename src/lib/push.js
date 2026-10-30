@@ -35,11 +35,26 @@ export const alreadyAsked = () => { try { return localStorage.getItem(ASKED_KEY)
 export const markAsked = () => { try { localStorage.setItem(ASKED_KEY, '1'); } catch { /* sin almacenamiento */ } };
 
 // Preferencias de este dispositivo: { on, hour }
-export async function pushPrefs() {
+// La verdad la tiene el servidor: si el navegador está suscrito pero falta la fila (la borró el aviso diario
+// o era de otra cuenta), la volvemos a guardar a nombre de quien ha iniciado sesión.
+export async function pushPrefs(userId) {
   const sub = await currentSubscription().catch(() => null);
   if (!sub) return { on: false, hour: DEFAULT_HOUR };
   const { data } = await supabase.from('push_subscriptions').select('notify_hour').eq('endpoint', sub.endpoint).maybeSingle();
-  return { on: true, hour: data?.notify_hour ?? DEFAULT_HOUR };
+  if (data) return { on: true, hour: data.notify_hour ?? DEFAULT_HOUR };
+  if (userId && Notification.permission === 'granted') {
+    const j = sub.toJSON();
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      { user_id: userId, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, notify_hour: DEFAULT_HOUR, tz: TZ },
+      { onConflict: 'endpoint' });
+    if (!error) return { on: true, hour: DEFAULT_HOUR };
+  }
+  return { on: false, hour: DEFAULT_HOUR };
+}
+
+/** Al cerrar sesión: este dispositivo deja de recibir los avisos de esa cuenta */
+export async function forgetDevice() {
+  try { await disablePush(); } catch { /* sin suscripción */ }
 }
 
 export async function setPushHour(hour) {

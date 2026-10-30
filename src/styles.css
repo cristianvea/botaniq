@@ -906,3 +906,11 @@ button.cell:active, a.cell:active { background: var(--fill); }
 .thread-about .avatar { border-radius: 50%; }
 .ask-new-head { margin: 0 22px; }
 .thread-emoji { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; flex-shrink: 0; }
+.composer-quota { text-align: center; font-size: 12.5px; font-weight: 800; color: var(--label-2); margin: -2px 0 6px; }
+.wet-btn { flex-shrink: 0; min-height: 44px; padding: 0 10px; border-radius: 14px; border: 2px solid var(--sep); border-bottom-width: 4px; background: var(--card); color: var(--label-2); font: inherit; font-size: 11.5px; font-weight: 800; line-height: 1.15; cursor: pointer; touch-action: manipulation; }
+.wet-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+.btn.oauth { background: var(--card); color: var(--label); border: 2px solid var(--sep); box-shadow: 0 4px 0 var(--sep); }
+.btn.oauth:active { box-shadow: 0 0 0 var(--sep); }
+.btn.oauth.apple { background: #000; color: #fff; border-color: #000; box-shadow: 0 4px 0 #333; }
+.oauth-or { display: flex; align-items: center; gap: 10px; color: var(--label-3); font-size: 13px; font-weight: 800; margin: 6px 0 -4px; }
+.oauth-or::before, .oauth-or::after { content: ''; flex: 1; height: 2px; background: var(--sep); }

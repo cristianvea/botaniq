@@ -218,7 +218,25 @@ test('flor de pascua no es una crasa', () => {
   assert.equal(profileForTaxon({ species: 'Euphorbia pulcherrima Willd. ex Klotzsch', genus: 'Euphorbia', family: 'Euphorbiaceae' }), 'flor_interior');
   assert.equal(profileForTaxon({ species: 'Euphorbia milii', genus: 'Euphorbia' }), 'suculenta');
   const d = 1 / dailyRate({ profile: 'flor_interior', location: 'indoor', light: 'indirect', pot: 'medium', pot_material: 'plastic', substrate: 'unknown' }, { date: '2026-12-15', tmean: 7, rh: 75, lat: 40.4 });
-  assert.ok(d >= 2.5 && d <= 4.5, `pascua ${d}`);
+  assert.ok(d >= 2 && d <= 3.5, `pascua ${d}`);
   // Frecuencia fijada por el usuario: manda sobre el cálculo
   assert.equal(1 / dailyRate({ profile: "cactus", fixed_days: 2 }, { tmean: 5 }), 2);
+});
+
+test('calefacción en invierno y reposo de las crasas', () => {
+  const jan = { date: '2027-01-15', tmean: 6, rh: 75, lat: 40.4 };
+  const oct = { date: '2026-10-25', tmean: 15, rh: 65, lat: 40.4 };
+  const days = (p, d) => 1 / dailyRate({ location: 'indoor', substrate: 'unknown', pot_material: 'plastic', pot: 'medium', light: 'indirect', ...p }, d);
+  // Con calefacción, una tropical no se espacia más en enero que en octubre
+  assert.ok(days({ profile: 'tropical' }, jan) <= days({ profile: 'tropical' }, oct) + 0.5);
+  // El cactus, en cambio, descansa en invierno
+  assert.ok(days({ profile: 'cactus', light: 'direct' }, jan) > 1.6 * days({ profile: 'cactus', light: 'direct' }, oct));
+});
+
+import { learnFromEarlyWatering } from '../src/lib/watering.js';
+test('aprende cuando riegas antes de lo previsto', () => {
+  assert.ok(learnFromEarlyWatering({ adjust: 1 }, { lastWatered: '2026-10-01', dryness: 0.6 }) > 1);
+  assert.equal(learnFromEarlyWatering({ adjust: 1 }, { lastWatered: '2026-10-01', dryness: 0.95 }), null); // a su hora
+  assert.equal(learnFromEarlyWatering({ adjust: 1, fixed_days: 3 }, { lastWatered: '2026-10-01', dryness: 0.6 }), null);
+  assert.equal(learnFromEarlyWatering({ adjust: 1 }, { lastWatered: null, dryness: 0.6 }), null);
 });

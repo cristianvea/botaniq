@@ -93,7 +93,8 @@ export default function CheckinPage(ctx) {
       const ev = await db.addEvent(plant, 'checkin', user.id, new Date(), { soil, note: note || null, photo_path });
 
       let newAdjust = plant.adjust || 1;
-      if (soil && st) {
+      // Solo aprende si hay un riego registrado (si no, la sequedad era una suposición) y sin frecuencia fijada
+      if (soil && st && st.lastWatered && !(plant.fixed_days > 0)) {
         newAdjust = learnFromSoil(plant.adjust, st.dryness, soil);
         if (Math.abs(newAdjust - (plant.adjust || 1)) > 0.001) await db.savePlant({ id: plant.id, adjust: newAdjust });
       }
@@ -117,8 +118,13 @@ export default function CheckinPage(ctx) {
   };
 
   const applyWatering = async (dir) => {
-    const adjust = Math.min(2.5, Math.max(0.4, (plant.adjust || 1) * (dir === 'more_often' ? 1.12 : 0.88)));
-    await db.savePlant({ id: plant.id, adjust });
+    if (plant.fixed_days > 0) {
+      // Con frecuencia fijada, movemos un día la frecuencia
+      await db.savePlant({ id: plant.id, fixed_days: Math.max(1, plant.fixed_days + (dir === 'more_often' ? -1 : 1)) });
+    } else {
+      const adjust = Math.min(2.5, Math.max(0.4, (plant.adjust || 1) * (dir === 'more_often' ? 1.12 : 0.88)));
+      await db.savePlant({ id: plant.id, adjust });
+    }
     await reload();
     notify(dir === 'more_often' ? 'Te avisaré para regarla antes' : 'Espaciaré más sus riegos');
     setResult((r) => ({ ...r, appliedWatering: true }));

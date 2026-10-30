@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
+import { forgetDevice } from '../lib/push.js';
 import { NavBar, Section, Segmented, Icon, Spinner, TextField } from '../components/ui.jsx';
 
 export default function OnboardingPage({ user, onDone, canCancel }) {
@@ -25,7 +26,7 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
       <NavBar
         title={canCancel ? 'Otra casa' : 'Bienvenido'}
         left={canCancel ? <a className="nav-btn" href="#/settings">Cancelar</a> : null}
-        right={!canCancel ? <button className="nav-btn" onClick={() => supabase.auth.signOut()}>Salir</button> : null}
+        right={!canCancel ? <button className="nav-btn" onClick={async () => { await forgetDevice(); supabase.auth.signOut(); }}>Salir</button> : null}
       />
       <div className="empty-state" style={{ paddingTop: 8, paddingBottom: 24 }}>
         <div className="glyph"><Icon name="house" size={40} /></div>
@@ -41,7 +42,7 @@ export default function OnboardingPage({ user, onDone, canCancel }) {
           {mode === 'create' ? (
             <TextField label="Nombre de la casa" required value={name} placeholder="Mi casa" onChange={(e) => setName(e.target.value)} />
           ) : (
-            <TextField label="Código de invitación" required value={code} maxLength={6} placeholder="A1B2C3" autoCapitalize="characters" autoCorrect="off"
+            <TextField label="Código de invitación" required value={code} maxLength={12} placeholder="ABCD2345EF" autoCapitalize="characters" autoCorrect="off"
               style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2 }} onChange={(e) => setCode(e.target.value.toUpperCase())} />
           )}
           <TextField label="Tu nombre" required value={me} placeholder="Cómo te verán los demás" onChange={(e) => setMe(e.target.value)} />

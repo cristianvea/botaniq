@@ -32,9 +32,12 @@ const VPD_REF = vpd(21, 50);
 export function indoorClimate(day) {
   const tout = day.tmean ?? 18;
   const rhout = day.rh ?? 60;
-  const t = clamp(21 + (tout - 21) * 0.3, 16, 30);
+  let t = clamp(21 + (tout - 21) * 0.3, 16, 30);
   let rh = 0.5 * rhout + 20;
-  if (tout < 12) rh -= 8; // calefacción encendida → aire más seco
+  // Calefacción: con frío fuera, dentro hay ~20 °C y el aire se reseca (entra del todo por debajo de 10 °C)
+  const heat = clamp((16 - tout) / 6, 0, 1);
+  t += (20.5 - t) * heat;
+  rh += (36 - rh) * heat;
   return { t, rh: clamp(rh, 25, 70) };
 }
 
@@ -56,6 +59,16 @@ export function envFactor(plant, day) {
   return (fv * growth * daylight) ** INDOOR_DAMPING * (LIGHTS[plant.light] || LIGHTS.indirect).factor;
 }
 
+// Reposo invernal (nov–feb en el hemisferio norte): estas plantas apenas beben aunque haya calefacción
+const DORMANCY = { cactus: 0.45, suculenta: 0.6, resistente: 0.75 };
+function dormancy(plant, day) {
+  const f = DORMANCY[plant.profile];
+  if (!f || !day?.date) return 1;
+  const m = Number(day.date.slice(5, 7));
+  const winter = (day.lat ?? 40) >= 0 ? [11, 12, 1, 2].includes(m) : [5, 6, 7, 8].includes(m);
+  return winter ? f : 1;
+}
+
 /** Tasa de secado diaria de la planta (fracción de "depósito" que pierde ese día) */
 export function dailyRate(plant, day) {
   // Frecuencia fijada por el usuario: manda sobre el cálculo
@@ -66,7 +79,7 @@ export function dailyRate(plant, day) {
   const material = POT_MATERIALS[plant.pot_material]?.factor ?? 1;
   const adjust = plant.adjust || 1;
   const drainage = plant.pot_drainage === false ? 0.8 : 1; // sin agujeros retiene el agua
-  return (1 / profile.baseDays) * substrate * pot * material * drainage * adjust * envFactor(plant, day);
+  return (1 / profile.baseDays) * substrate * pot * material * drainage * adjust * envFactor(plant, day) * dormancy(plant, day);
 }
 
 const dateInTz = (iso, tz) =>
@@ -222,4 +235,17 @@ export function mistStatus(plant, events, weather, mist) {
   const last = events.filter((e) => e.type === 'mist').sort((a, b) => new Date(b.at) - new Date(a.at))[0];
   const since = last ? daysBetween(dateInTz(last.at, weather.timezone), weather.today) : Infinity;
   return { needed: true, due: since >= every, every, since, rh };
+}
+
+/**
+ * Aprende sin preguntar: si riegas antes de lo que la app calculaba (la tierra estaba a medio secar
+ * según el modelo), es que se seca más rápido de lo previsto → acelera un poco esa planta.
+ * Devuelve el nuevo ajuste o null si no hay nada que aprender.
+ */
+export function learnFromEarlyWatering(plant, st) {
+  if (!st?.lastWatered || plant.fixed_days > 0) return null;
+  if (st.dryness < 0.5 || st.dryness >= 0.85) return null; // muy pronto (riego extra) o a su hora: no dice nada
+  const adjust = plant.adjust || 1;
+  if (adjust >= 1.8) return null; // tope para no empujar a regar de más
+  return clamp(adjust * clamp(1 / Math.sqrt(st.dryness), 1, 1.1), 0.4, 1.8);
 }

@@ -12,3 +12,4 @@ export async function testNotification() {}
 export async function currentSubscription() { return null; }
 export async function enablePush() { throw new Error('Las notificaciones no están disponibles en la demo'); }
 export async function disablePush() {}
+export async function forgetDevice() {}

@@ -25,10 +25,15 @@ if (!DRY_RUN) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRI
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-async function all(table, build = (q) => q) {
-  const { data, error } = await build(sb.from(table).select('*'));
-  if (error) throw new Error(`${table}: ${error.message}`);
-  return data;
+// Lee la tabla entera de 1.000 en 1.000 (Supabase devuelve como mucho 1.000 filas por consulta)
+async function all(table, build = (q) => q, key = 'id') {
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await build(sb.from(table).select('*')).order(key).range(from, from + 999);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    out.push(...data);
+    if (data.length < 1000) return out;
+  }
 }
 
 const since = new Date(Date.now() - 120 * 86400000).toISOString();
@@ -36,7 +41,7 @@ const [households, plants, events, members, subs, zones] = await Promise.all([
   all('households', (q) => q.not('lat', 'is', null)),
   all('plants', (q) => q.eq('archived', false)),
   all('plant_events', (q) => q.gte('at', since)),
-  all('household_members'),
+  all('household_members', (q) => q, 'user_id'),
   all('push_subscriptions'),
   all('zones'),
 ]);
@@ -86,8 +91,8 @@ async function messageFor(h) {
   try {
     weather = await fetchWeather(h.lat, h.lon);
   } catch (e) {
-    console.error(`[${h.name}] sin tiempo: ${e.message}`);
-    return null;
+    console.error(`[${h.id.slice(0, 8)}] sin tiempo: ${e.message}`);
+    return (messageCache[h.id] = { failed: true }); // se reintenta en la siguiente ejecución
   }
 
   const due = hp
@@ -101,10 +106,11 @@ async function messageFor(h) {
   const hr = reminders.filter((r) => hp.some((p) => p.id === r.plant_id));
   const dueIds = new Set(due.map((d) => d.p.id));
   const name = (id) => hp.find((p) => p.id === id)?.name;
-  const withWater = hr.filter((r) => r.mode === 'with_watering' && dueIds.has(r.plant_id) && reminderStatus(r, events).due);
-  const byDays = hr.filter((r) => r.mode === 'every_days' && reminderStatus(r, events).due);
+  const withWater = hr.filter((r) => r.mode === 'with_watering' && dueIds.has(r.plant_id) && reminderStatus(r, events, new Date(), 'Europe/Madrid').due);
+  const byDays = hr.filter((r) => r.mode === 'every_days' && reminderStatus(r, events, new Date(), 'Europe/Madrid').due);
 
-  console.log(`[${h.name}] ${hp.length} plantas, ${due.length} por regar: ${due.map((d) => d.p.name).join(', ')}; pulverizar: ${toMist.map((p) => p.name).join(', ')}; cuidados: ${[...withWater, ...byDays].map((r) => r.title).join(', ')}`);
+  // El repositorio es público: en el registro solo números, nunca nombres de casas ni de plantas
+  console.log(`[${h.id.slice(0, 8)}] ${hp.length} plantas, ${due.length} por regar, ${toMist.length} pulverizar, ${withWater.length + byDays.length} cuidados`);
   if (!due.length && !toMist.length && !byDays.length) return null;
 
   return (messageCache[h.id] = householdSummary({
@@ -123,10 +129,12 @@ for (const s of ready) {
   // Un único aviso con todas las plantas de todas sus casas
   const summaries = [];
   for (const h of households.filter((x) => hids.includes(x.id))) summaries.push(await messageFor(h));
+  // Si falló el tiempo de alguna casa, no marcamos el día: se reintenta en la próxima hora de la ventana
+  if (summaries.some((x) => x?.failed)) { console.log('  sin datos del tiempo: se reintentará'); continue; }
   const note = buildNotification(summaries, { url: APP_URL || undefined });
   if (note) {
     const payload = JSON.stringify(note);
-    if (DRY_RUN) console.log('  → (simulado)', s.endpoint.slice(0, 50), payload);
+    if (DRY_RUN) console.log('  → (simulado)', note.title); // sin nombres de plantas en el registro público
     else {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
@@ -137,7 +145,8 @@ for (const s of ready) {
           console.log('  suscripción caducada eliminada');
           gone = true;
         } else {
-          console.error('  error push', e.statusCode, e.body || e.message);
+          console.error('  error push', e.statusCode);
+          continue; // fallo temporal: no marcamos el día, se reintenta en la próxima hora
         }
       }
     }

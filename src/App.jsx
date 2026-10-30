@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, configured } from './lib/supabase.js';
 import * as db from './lib/data.js';
 import { fetchWeather } from './lib/weather.js';
@@ -93,14 +93,18 @@ export default function App() {
   };
 
   // ── Plantas, eventos y tiempo ──
+  const currentHid = useRef(null);
+  currentHid.current = household?.id || null;
   const reload = useCallback(async () => {
     if (!household) return;
+    const hid = household.id;
     setLoading(true);
     try {
       const [p, e, z, r] = await Promise.all([
-        db.listPlants(household.id), db.listEvents(household.id), db.listZones(household.id),
-        db.listReminders(household.id).catch(() => []),
+        db.listPlants(hid), db.listEvents(hid), db.listZones(hid),
+        db.listReminders(hid).catch(() => []),
       ]);
+      if (currentHid.current !== hid) return; // has cambiado de casa mientras cargaba
       setPlants(p);
       setEvents(e);
       setZones(z);
@@ -119,16 +123,31 @@ export default function App() {
     setWeather(null);
     setWeatherError(null);
     if (household?.lat == null) return;
+    let alive = true;
+    const key = `botaniq.weather.${household.lat},${household.lon}`;
     fetchWeather(household.lat, household.lon)
-      .then(setWeather)
-      .catch((e) => setWeatherError(e.message));
+      .then((w) => {
+        if (!alive) return;
+        setWeather(w);
+        try { localStorage.setItem(key, JSON.stringify(w)); } catch { /* sin espacio */ }
+      })
+      .catch((e) => {
+        if (!alive) return;
+        // Sin conexión con el servicio del tiempo: usamos el último que tengamos (los días sin dato cuentan como normales)
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem(key) || 'null'); } catch { /* nada */ }
+        const today = new Date().toLocaleDateString('en-CA');
+        if (cached?.days) setWeather({ ...cached, today, stale: true });
+        setWeatherError(e.message);
+      });
+    return () => { alive = false; };
   }, [household?.lat, household?.lon]);
 
   // Avisos de este dispositivo
   useEffect(() => {
     if (!session) return;
-    pushPrefs().then((p) => setPush({ ...p, ready: true })).catch(() => setPush((p) => ({ ...p, ready: true })));
-  }, [session]);
+    pushPrefs(session.user.id).then((p) => setPush({ ...p, ready: true })).catch(() => setPush((p) => ({ ...p, ready: true })));
+  }, [session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statuses = useMemo(() => {
     if (!weather) return {};
@@ -175,6 +194,8 @@ export default function App() {
     );
   } else if (route.name === 'plant') {
     page = <PlantPage key={route.id} {...ctx} plantId={route.id} />;
+  } else if (route.name === 'edit' && !plants.some((p) => p.id === route.id)) {
+    page = loading || !plants.length ? <Loading /> : <div className="center c3">Planta no encontrada</div>;
   } else if (route.name === 'new' || route.name === 'edit') {
     page = <EditPlantPage key={route.id || 'new'} {...ctx} plantId={route.name === 'edit' ? route.id : null} />;
   } else if (route.name === 'checkin') {

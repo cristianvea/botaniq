@@ -23,6 +23,16 @@ export async function createHousehold(name, displayName) {
 export async function joinHousehold(code, displayName) {
   const { data, error } = await supabase.rpc('join_household', { p_code: code, p_display_name: displayName });
   if (error) throw error;
+  if (!data) throw new Error('Código no válido. Revisa que esté bien escrito.');
+  return data;
+}
+
+export async function rotateInviteCode(hid) {
+  const { data, error } = await supabase.rpc('rotate_invite_code', { p_household: hid });
+  if (error) {
+    if (/rotate_invite_code/.test(error.message)) throw new Error('Falta actualizar la base de datos (migración 009_seguridad.sql)');
+    throw error;
+  }
   return data;
 }
 
@@ -65,7 +75,10 @@ export async function savePlant(plant) {
 }
 
 export async function deletePlant(plant) {
-  if (plant.photo_path) await supabase.storage.from(BUCKET).remove([plant.photo_path]);
+  // Todas sus fotos (también las de revisiones antiguas), antes de que se borren los eventos
+  const { data: ev } = await supabase.from('plant_events').select('photo_path').eq('plant_id', plant.id).not('photo_path', 'is', null);
+  const paths = [plant.photo_path, ...(ev || []).map((e) => e.photo_path)].filter(Boolean);
+  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
   const { error } = await supabase.from('plants').delete().eq('id', plant.id);
   if (error) throw error;
 }
@@ -102,12 +115,14 @@ export async function removePhoto(path) {
 
 const urlCache = new Map();
 export async function photoUrls(paths) {
-  const missing = paths.filter((p) => p && !urlCache.has(p));
+  // Enlaces firmados de 1 día; se renuevan al cabo de 20 h (la app puede estar abierta días en el iPhone)
+  const now = Date.now();
+  const missing = paths.filter((p) => p && !(urlCache.get(p)?.until > now));
   if (missing.length) {
-    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(missing, 60 * 60 * 24 * 7);
-    for (const d of data || []) if (d.signedUrl) urlCache.set(d.path, d.signedUrl);
+    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(missing, 60 * 60 * 24);
+    for (const d of data || []) if (d.signedUrl) urlCache.set(d.path, { url: d.signedUrl, until: now + 20 * 3600 * 1000 });
   }
-  return Object.fromEntries(paths.filter(Boolean).map((p) => [p, urlCache.get(p)]));
+  return Object.fromEntries(paths.filter(Boolean).map((p) => [p, urlCache.get(p)?.url]));
 }
 
 // ───────── Zonas ─────────
@@ -167,9 +182,11 @@ export async function deleteReminder(id) {
 
 // ───────── Conversaciones con el asistente ─────────
 export async function listChat(hid) {
-  const { data, error } = await supabase.from('chat_messages').select('*').eq('household_id', hid).order('created_at');
+  // Los 400 más recientes (si no, a partir de 1.000 mensajes no se verían los nuevos)
+  const { data, error } = await supabase.from('chat_messages').select('*').eq('household_id', hid)
+    .order('created_at', { ascending: false }).limit(400);
   if (error) return []; // sin la migración: la conversación no se guarda, pero funciona
-  return data.slice(-400);
+  return data.reverse();
 }
 
 export async function addChat(msg) {

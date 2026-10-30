@@ -21,9 +21,10 @@ const EXAMPLES = [
 const fmtWhen = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
-  const days = Math.floor((Date.now() - d) / 86400000);
-  if (days < 1 && new Date().getDate() === d.getDate()) return `Hoy, ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
-  if (days < 2) return 'Ayer';
+  const key = (x) => x.toLocaleDateString('en-CA');
+  const days = Math.round((new Date(key(new Date())) - new Date(key(d))) / 86400000); // días de calendario
+  if (days === 0) return `Hoy, ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
+  if (days === 1) return 'Ayer';
   if (days < 7) return d.toLocaleDateString('es-ES', { weekday: 'long' });
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 };
@@ -32,7 +33,8 @@ const short = (t, n = 60) => (t.length > n ? `${t.slice(0, n - 1).trim()}…` : 
 // Florencio: portada con saludo + conversaciones guardadas (#/ask), o una conversación (#/chat/:id)
 export default function AskPage(ctx) {
   const { household, plants, photos, user, notify, reload, plantId, threadId } = ctx;
-  const [all, setAll] = useState(null); // todos los mensajes de la casa
+  const [all, setAllState] = useState(() => chat.cachedMessages(household.id)); // todos los mensajes de la casa
+  const setAll = (fn) => setAllState((a) => { const v = typeof fn === 'function' ? fn(a) : fn; chat.rememberMessages(household.id, v); return v; });
   const [live, setLive] = useState(() => chat.getPending()); // pregunta en curso (sigue aunque salgas)
   const [focus, setFocus] = useState(plantId || (plants.length === 1 ? plants[0].id : null));
   const [text, setText] = useState('');
@@ -40,17 +42,19 @@ export default function AskPage(ctx) {
   const endRef = useRef(null);
   const fileRef = useRef(null);
 
-  useEffect(() => { db.listChat(household.id).then(setAll); }, [household.id]);
+  // Al llegar, juntamos lo guardado con lo que ya había en memoria (respuestas que llegaron mientras no estabas, errores…)
+  useEffect(() => { db.listChat(household.id).then((rows) => setAll((a) => chat.mergeMessages(rows, chat.cachedMessages(household.id) || a || []))); }, [household.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => chat.subscribe((ev) => {
     if (ev.t === 'live') setLive({ threadId: ev.threadId, text: ev.text, tier: ev.tier });
     if (ev.t === 'idle') setLive(null);
-    if (ev.t === 'done' || ev.t === 'error') setAll((a) => [...(a || []), ev.msg]);
+    if (ev.t === 'done' || ev.t === 'error') setAllState(chat.cachedMessages(household.id) || []);
   }), []);
 
   const threads = useMemo(() => threadsOf(all || []), [all]);
   const thread = threadId ? threads.find((t) => t.id === threadId) : null;
   const messages = thread?.messages || [];
   const busy = Boolean(threadId && live?.threadId === threadId);
+  const busyElsewhere = Boolean(live && live.threadId !== threadId);
   const threadPlant = thread ? plants.find((p) => p.id === thread.plantId) : null;
   const focusPlant = plants.find((p) => p.id === focus);
 
@@ -77,6 +81,7 @@ export default function AskPage(ctx) {
   const send = async (raw, imgOverride) => {
     const q = (raw ?? text).trim();
     if (!q || busy) return;
+    if (busyElsewhere) return notify('Florencio aún está respondiendo tu otra pregunta. Espera un momento.');
     setText('');
     const img = imgOverride || image;
     setImage(null);
@@ -136,6 +141,9 @@ export default function AskPage(ctx) {
           <img src={image.url} alt="Foto adjunta" />
           <button className="icon-circle" aria-label="Quitar foto" onClick={() => { URL.revokeObjectURL(image.url); setImage(null); }}><Icon name="close" size={12} stroke={2.8} /></button>
         </div>
+      )}
+      {chat.getRemaining() != null && chat.getRemaining() <= 5 && (
+        <div className="composer-quota">{chat.getRemaining() === 0 ? 'Florencio ya ha respondido todas las preguntas de hoy. Mañana más 🌱' : `Te quedan ${chat.getRemaining()} ${chat.getRemaining() === 1 ? 'pregunta' : 'preguntas'} hoy`}</div>
       )}
       <div className="composer-row">
         <button className="composer-btn" aria-label="Añadir foto" onClick={() => fileRef.current?.click()}><Icon name="camera" size={22} /></button>

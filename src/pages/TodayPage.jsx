@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { waterPlants, mistPlants, completeReminder, dueWithWatering } from '../lib/actions.js';
+import { waterPlants, mistPlants, completeReminder, dueWithWatering, stillWet } from '../lib/actions.js';
 import { reminderStatus } from '../lib/reminders.js';
 import { mistStatus } from '../lib/watering.js';
 import { wateringGuide } from '../lib/care.js';
@@ -38,6 +38,8 @@ export default function TodayPage(ctx) {
     && plants.some((p) => p.id === r.plant_id) && reminderStatus(r, events).due);
 
   const water = async (list) => {
+    list = list.filter((p) => !done[p.id]); // doble toque: no registrar dos riegos
+    if (!list.length) return;
     setDone((d) => ({ ...d, ...Object.fromEntries(list.map((p) => [p.id, true])) }));
     await waterPlants(ctx, list);
     setDone({});
@@ -75,6 +77,7 @@ export default function TodayPage(ctx) {
               ) : <div className="place">{household.name}</div>}
               <div className="meta">{(household.place_name || '').split(',')[0]}</div>
               <div className="meta">{season.name} · {fmtHours(season.dayHours)} de luz</div>
+              {weather.stale && <div className="meta">⚠️ Sin conexión: uso el último tiempo guardado</div>}
             </div>
             <div className="big num">{Math.round(weather.current.temp)}°</div>
           </div>
@@ -138,7 +141,7 @@ export default function TodayPage(ctx) {
         >
           {needWater.map((p) => (
             <PlantRow key={p.id} plant={p} url={photos[p.photo_path]} sub={sub(p)} st={statuses[p.id]} how={[dueWithWatering(ctx, p).map((r) => `🌱 ${r.title}`).join(', '), wateringGuide(p, { weather, status: statuses[p.id], events: events.filter((e) => e.plant_id === p.id) }).short].filter(Boolean).join(' · ')}>
-              <a className="icon-circle" href={`#/checkin/${p.id}`} aria-label={`Revisar ${p.name}`}><Icon name="camera" size={18} /></a>
+              <button className="wet-btn" onClick={() => stillWet(ctx, p)} aria-label={`${p.name} aún está húmeda`}>Aún<br />húmeda</button>
               <button className={`water-btn ${done[p.id] ? 'done' : ''}`} onClick={() => water([p])} aria-label={`Marcar ${p.name} como regada`}>
                 <Icon name={done[p.id] ? 'check' : 'dropFill'} size={20} stroke={done[p.id] ? 2.6 : 0} />
               </button>

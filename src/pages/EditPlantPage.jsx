@@ -44,7 +44,7 @@ export default function EditPlantPage(ctx) {
   const [idError, setIdError] = useState(null);
   const [lastWatered, setLastWatered] = useState('unknown');
   const [lastDate, setLastDate] = useState('');
-  const [newLocation, setNewLocation] = useState('indoor'); // solo si aún no hay zonas
+  const [newLocation, setNewLocation] = useState(existing?.location || 'indoor'); // solo si aún no hay zonas
   const [newZone, setNewZone] = useState(false);
   const [more, setMore] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,6 +52,16 @@ export default function EditPlantPage(ctx) {
   const libRef = useRef();
 
   useEffect(() => () => { if (photoBlob && preview) URL.revokeObjectURL(preview); }, [photoBlob, preview]);
+
+  // (todos los hooks antes de cualquier return)
+  // Planta ya guardada sin especie: la identificamos con su foto al abrir la edición
+  useEffect(() => {
+    if (existing && !existing.species && existing.photo_path && plantnetEnabled) {
+      let alive = true;
+      (async () => { const b = await currentBlob(); if (alive && b) runIdentify(b); })();
+      return () => { alive = false; };
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (plantId && !existing) return <div className="center c3">Planta no encontrada</div>;
 
@@ -118,15 +128,6 @@ export default function EditPlantPage(ctx) {
     setStep('confirm');
   };
 
-  // Planta ya guardada sin especie: la identificamos con su foto al abrir la edición
-  useEffect(() => {
-    if (existing && !existing.species && existing.photo_path && plantnetEnabled) {
-      let alive = true;
-      (async () => { const b = await currentBlob(); if (alive && b) runIdentify(b); })();
-      return () => { alive = false; };
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const save = async (force = false) => {
     if (!form.name.trim()) return notify('Ponle un nombre a la planta');
     if (!force && mismatch && !mismatchOk) { setAskMismatch(true); return; }
@@ -134,6 +135,7 @@ export default function EditPlantPage(ctx) {
     setSaving(true);
     try {
       let zone = zones.find((z) => z.id === form.zone_id);
+      if (!zone && zones.length) { setSaving(false); return notify('Elige en qué zona está'); }
       if (!zone) {
         zone = await db.saveZone({ household_id: household.id, name: newLocation === 'indoor' ? 'Interior' : 'Exterior', location: newLocation, gets_rain: true });
       }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as db from '../lib/data.js';
 import { supabase } from '../lib/supabase.js';
+import { forgetDevice } from '../lib/push.js';
 import { go } from '../lib/nav.js';
 import { pushSupported, isIOS, isStandalone, disablePush, testNotification, fmtHour } from '../lib/push.js';
 import LocationPicker from '../components/LocationPicker.jsx';
@@ -78,7 +79,11 @@ export default function SettingsPage(ctx) {
 
       <Section header={household.name} inset="icon" footer="Comparte el código para que otras personas cuiden contigo de estas plantas.">
         <Cell icon="person" iconBg="#5856d6" title="Miembros" value={members.map((m) => m.display_name || '¿?').join(', ')} />
-        <Cell icon="share" iconBg="#0a7aff" title="Invitar" value={<span className="num" style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 2 }}>{household.invite_code}</span>} chevron onClick={share} />
+        <Cell icon="share" iconBg="#0a7aff" title="Invitar" value={<span className="num" style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', letterSpacing: 1 }}>{household.invite_code}</span>} chevron onClick={share} />
+        <Cell icon="refresh" iconBg="#8e8e93" title={<span className="c-tint">Cambiar el código</span>} sub="El anterior dejará de servir" onClick={async () => {
+          if (!confirm('¿Cambiar el código de invitación? El que has compartido dejará de funcionar.')) return;
+          try { await db.rotateInviteCode(household.id); await loadHouseholds(); notify('Código cambiado'); } catch (e) { notify(e.message); }
+        }} />
         <Cell icon="pin" iconBg="#34c759" title="Ubicación" value={(household.place_name || '').split(',')[0]} chevron onClick={() => setEditLoc(!editLoc)} />
       </Section>
       {editLoc && (
@@ -133,7 +138,7 @@ export default function SettingsPage(ctx) {
 
       <Section>
         <Cell title="Salir de esta casa" danger onClick={leave} />
-        <Cell title="Cerrar sesión" danger onClick={() => supabase.auth.signOut()} />
+        <Cell title="Cerrar sesión" danger onClick={async () => { await forgetDevice(); supabase.auth.signOut(); }} />
       </Section>
 
       <p className="t-foot c2" style={{ textAlign: 'center', padding: '0 32px', lineHeight: 1.5 }}>
